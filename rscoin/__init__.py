@@ -121,33 +121,29 @@ class Tx:
 
         all_good = True
         all_good &= (len(past_tx) == len(keys) == len(sigs) == len(self.inTx))
-        assert all_good
+        if not all_good:
+            return False
 
         val = 0
         for (otx, okey, osig, txin) in zip(past_tx, keys, sigs, self.inTx):
             # Check the transaction ID matches
             oTx = Tx.parse(otx)
             all_good &= (txin.tx_id == oTx.id())
-            assert all_good
 
             all_good &= (0 <= txin.pos < len(oTx.outTx))
-            assert all_good
-
+            
             # Check the key matches
             k = Key(okey)
             all_good &= (oTx.outTx[txin.pos].key_id == k.id())
-            assert all_good
             val += oTx.outTx[txin.pos].value
 
             # Check the signature matches
             all_good &= k.verify(self.id(), osig)
-            assert all_good
-
+            
         # Check the value matches
         total_value = sum([o.value for o in self.outTx])
         all_good &= (val == total_value)
-        assert all_good
-
+        
         return all_good
 
 
@@ -174,7 +170,7 @@ def test_Tx():
     assert hexlify(y.serialize())[:8] == "01000100"
     assert len(x.id()) == len(y.id()) == 32
 
-def test_checks():
+def test_checks1():
 
     k1 = Key(urandom(32), public=False)
     k2 = Key(urandom(32), public=False)
@@ -187,6 +183,34 @@ def test_checks():
     assert tx3.check_transaction([tx1.serialize(), tx2.serialize()], 
                             [k1.export()[0], k2.export()[0]], 
                             [k1.sign(tx3.id()), k2.sign(tx3.id())])
+
+def test_checks2():
+
+    k1 = Key(urandom(32), public=False)
+    k2 = Key(urandom(32), public=False)
+
+    tx1 = Tx([], [OutputTx(k1.id(), 100), OutputTx(k2.id(), 150)])
+
+    tx3 = Tx([InputTx(tx1.id(), 0), InputTx(tx1.id(), 1)], [OutputTx(k1.id(), 250)])
+
+    assert tx3.check_transaction([tx1.serialize(), tx1.serialize()], 
+                            [k1.export()[0], k2.export()[0]], 
+                            [k1.sign(tx3.id()), k2.sign(tx3.id())])
+
+def test_checks_failures():
+
+    k1 = Key(urandom(32), public=False)
+    k2 = Key(urandom(32), public=False)
+
+    tx1 = Tx([], [OutputTx(k1.id(), 100)])
+    tx2 = Tx([], [OutputTx(k2.id(), 150)])
+
+    tx3 = Tx([InputTx(tx1.id(), 0), InputTx(tx2.id(), 0)], [OutputTx(k1.id(), 251)])
+
+    assert not tx3.check_transaction([tx1.serialize(), tx2.serialize()], 
+                            [k1.export()[0], k2.export()[0]], 
+                            [k1.sign(tx3.id()), k2.sign(tx3.id())])
+
 
 def test_key():
     G = EcGroup()
