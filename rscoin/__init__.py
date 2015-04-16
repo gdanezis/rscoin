@@ -131,7 +131,7 @@ class Tx:
             all_good &= (txin.tx_id == oTx.id())
 
             all_good &= (0 <= txin.pos < len(oTx.outTx))
-            
+
             # Check the key matches
             k = Key(okey)
             all_good &= (oTx.outTx[txin.pos].key_id == k.id())
@@ -139,11 +139,11 @@ class Tx:
 
             # Check the signature matches
             all_good &= k.verify(self.id(), osig)
-            
+
         # Check the value matches
         total_value = sum([o.value for o in self.outTx])
         all_good &= (val == total_value)
-        
+
         return all_good
 
 
@@ -184,6 +184,28 @@ def test_checks1():
                             [k1.export()[0], k2.export()[0]], 
                             [k1.sign(tx3.id()), k2.sign(tx3.id())])
 
+def test_checks_timing():
+
+    params = []
+
+    for _ in range(100):
+        k1 = Key(urandom(32), public=False)
+        k2 = Key(urandom(32), public=False)
+
+        tx2 = Tx([], [OutputTx(k1.id(), 150)])
+
+        tx3 = Tx([InputTx(tx2.id(), 0)], [OutputTx(k1.id(), 100), OutputTx(k1.id(), 50)])
+
+        params += [(tx3.serialize(), ([tx2.serialize()], 
+                                [k1.export()[0]], 
+                                [k1.sign(tx3.id())]))]
+
+    t0 = timer()
+    for (tx3, par) in params:
+        assert Tx.parse(tx3).check_transaction(*par)
+    t1 = timer()
+    print "\nTx check rate: %2.2f / sec" % (1.0 / ((t1-t0)/100.0)) 
+
 def test_checks2():
 
     k1 = Key(urandom(32), public=False)
@@ -207,9 +229,15 @@ def test_checks_failures():
 
     tx3 = Tx([InputTx(tx1.id(), 0), InputTx(tx2.id(), 0)], [OutputTx(k1.id(), 251)])
 
+    # Wrong value
     assert not tx3.check_transaction([tx1.serialize(), tx2.serialize()], 
                             [k1.export()[0], k2.export()[0]], 
                             [k1.sign(tx3.id()), k2.sign(tx3.id())])
+
+    # Wrong signature
+    assert not tx3.check_transaction([tx1.serialize(), tx2.serialize()], 
+                            [k1.export()[0], k2.export()[0]], 
+                            [k2.sign(tx3.id()), k1.sign(tx3.id())])
 
 
 def test_key():
