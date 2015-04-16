@@ -11,12 +11,14 @@ from petlib.ecdsa import do_ecdsa_sign, do_ecdsa_verify
 # Named structures
 InputTx = namedtuple('InputTx', ['tx_id', 'pos'])
 OutputTx = namedtuple('OutputTx', ['key_id', 'value'])
+UtxoDiff = namedtuple('UtxoDIff', ['to_add', 'to_del'])
 
 
 class Key:
     """ A class representing a key pair """
 
     def __init__(self, key_bytes, public=True):
+        """ Make a key given a public or private key in bytes """
         self.G = EcGroup()
         if public:
             self.sec = None
@@ -89,6 +91,7 @@ class Tx:
 
     @staticmethod
     def parse(data):
+        """ Parse a serliazed transaction """
         Lin, Lout = unpack("HH", data[:4])
         data = data[4:]
 
@@ -114,7 +117,9 @@ class Tx:
         """ Returns the entries for the utxo for valid transactions """
 
         tid = self.id()
-        return [(tid, i) for i in range(len(self.outTx))]
+        adde = [(tid, i) for i in range(len(self.outTx))]
+        dele = [(xid, xpos) for xid, xpos in range(len(self.inTx))]
+        return UtxoDiff(to_add=adde, to_del=dele)
 
     def check_transaction(self, past_tx, keys, sigs):
         """ Checks that a transaction is valid given evidence """
@@ -129,8 +134,9 @@ class Tx:
             # Check the transaction ID matches
             oTx = Tx.parse(otx)
             all_good &= (txin.tx_id == oTx.id())
-
             all_good &= (0 <= txin.pos < len(oTx.outTx))
+            if not all_good:
+                return False
 
             # Check the key matches
             k = Key(okey)
@@ -145,4 +151,3 @@ class Tx:
         all_good &= (val == total_value)
 
         return all_good
-
