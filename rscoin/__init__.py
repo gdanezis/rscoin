@@ -15,7 +15,7 @@ UtxoDiff = namedtuple('UtxoDIff', ['to_add', 'to_del'])
 
 
 class Key:
-    """ A class representing a key pair """
+    """ Represents a key pair (or just a public key)"""
 
     def __init__(self, key_bytes, public=True):
         """ Make a key given a public or private key in bytes """
