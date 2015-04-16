@@ -1,11 +1,12 @@
-from petlib.ec import EcGroup
 
 from hashlib import sha256
+from binascii import hexlify
+from os import urandom
+
+from petlib.ec import EcGroup
 
 from rscoin import Key, Tx, InputTx, OutputTx
 
-from binascii import hexlify
-from os import urandom
 
 
 def test_test():
