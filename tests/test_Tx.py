@@ -56,6 +56,21 @@ def test_utxo_checks():
                             [k1.export()[0], k2.export()[0]], 
                             [k1.sign(tx3.id()), k2.sign(tx3.id())])
 
+def test_utxo_check_issuing():
+
+    kIssue = Key(urandom(32), public=False)
+    pubIssue = kIssue.pub.export()
+
+    k1 = Key(urandom(32), public=False)
+    k1pub = k1.pub.export()
+
+    tx3 = Tx([], [OutputTx(k1.id(), 250)])
+
+    assert tx3.check_transaction_utxo([], 
+                            [pubIssue], 
+                            [kIssue.sign(tx3.id())], masterkey = pubIssue)
+
+
 def test_utxo_entries():
 
     k1 = Key(urandom(32), public=False)

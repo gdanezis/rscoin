@@ -136,7 +136,7 @@ class Tx:
         return out_utxo
 
 
-    def check_transaction(self, past_tx, keys, sigs):
+    def check_transaction(self, past_tx, keys, sigs, masterkey=None):
         """ Checks that a transaction is valid given evidence """
 
         all_good = True
@@ -155,17 +155,31 @@ class Tx:
             outtx = oTx.outTx[txin.pos]
             out_utxo += [(txin.tx_id, txin.pos, outtx.key_id, outtx.value)]
 
-        return self.check_transaction_utxo(out_utxo, keys, sigs)
+        return self.check_transaction_utxo(out_utxo, keys, sigs, masterkey=None)
 
 
 
-    def check_transaction_utxo(self, past_utxo, keys, sigs):
+    def check_transaction_utxo(self, past_utxo, keys, sigs, masterkey=None):
         """ Checks that a transaction is valid given evidence """
 
         all_good = True
+        
+        ## Special issuing transaction -- has no parents
+        if len(past_utxo) == 0:
+            all_good &= (len(self.inTx) == 0)
+            all_good &= (len(keys) == len(sigs) == 1)
+            all_good &= (keys[0] == masterkey)
+
+            k = Key(keys[0])
+            all_good &= k.verify(self.id(), sigs[0])
+            return all_good
+
+
+        ## Normal transaction has parents
+        all_good &= len(past_utxo) > 0
         all_good &= (len(past_utxo) == len(keys) == len(sigs) == len(self.inTx))
         if not all_good:
-            return False
+            return False            
 
         val = 0
         for (utxo, okey, osig, txin) in zip(past_utxo, keys, sigs, self.inTx):
