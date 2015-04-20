@@ -56,7 +56,19 @@ def test_utxo_checks():
                             [k1.export()[0], k2.export()[0]], 
                             [k1.sign(tx3.id()), k2.sign(tx3.id())])
 
-    tx3.get_utxo_entries([k1.export(), k2.export()], [100, 150])
+def test_utxo_entries():
+
+    k1 = Key(urandom(32), public=False)
+    k2 = Key(urandom(32), public=False)
+
+    tx1 = Tx([], [OutputTx(k1.id(), 100)])
+    tx2 = Tx([], [OutputTx(k2.id(), 150)])
+
+    tx3 = Tx([InputTx(tx1.id(), 0), InputTx(tx2.id(), 0)], [OutputTx(k1.id(), 250)])
+
+    r = tx3.get_utxo_entries([k1.export(), k2.export()], [100, 150])
+    assert len(r[0]) == 2 # 2 inputs
+    assert len(r[1]) == 1 # 1 outputs
 
 
 # @profile
