@@ -41,6 +41,24 @@ def test_checks1():
                             [k1.export()[0], k2.export()[0]], 
                             [k1.sign(tx3.id()), k2.sign(tx3.id())])
 
+def test_utxo_checks():
+
+    k1 = Key(urandom(32), public=False)
+    k2 = Key(urandom(32), public=False)
+
+    tx1 = Tx([], [OutputTx(k1.id(), 100)])
+    tx2 = Tx([], [OutputTx(k2.id(), 150)])
+
+    tx3 = Tx([InputTx(tx1.id(), 0), InputTx(tx2.id(), 0)], [OutputTx(k1.id(), 250)])
+
+    assert tx3.check_transaction_utxo(
+                            [(tx1.id(), 0, k1.id(), 100), (tx2.id(), 0, k2.id(), 150)], 
+                            [k1.export()[0], k2.export()[0]], 
+                            [k1.sign(tx3.id()), k2.sign(tx3.id())])
+
+    tx3.get_utxo_entries([k1.export(), k2.export()], [100, 150])
+
+
 # @profile
 def test_checks_timing():
 

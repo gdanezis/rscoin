@@ -75,7 +75,7 @@ class Tx:
 
         # Serialize the In transations
         for intx in self.inTx:
-            ser += pack("32sL", intx.tx_id, intx.pos)
+            ser += pack("32sI", intx.tx_id, intx.pos)
 
         # Serialize the Out transactions
         for outtx in self.outTx:
@@ -113,13 +113,25 @@ class Tx:
         """ Return the fingerprint of the tranaction """
         return sha256(self.serialize()).digest()
 
-    def get_utxo_entries(self):
+    def get_utxo_entries(self, in_keys, in_vals):
         """ Returns the entries for the utxo for valid transactions """
+    
+        in_utxo = []
+        # Package the inputs
+        for intx, inkey, inval in zip(self.inTx, in_keys, in_vals):
+            inkey = pack("32sI", intx.tx_id, intx.pos)
+            invalue = pack("32sQ", inkey, inval)
+            in_utxo += [(inkey, invalue)]
 
-        tid = self.id()
-        adde = [(tid, i) for i in range(len(self.outTx))]
-        dele = [(xid, xpos) for xid, xpos in range(len(self.inTx))]
-        return UtxoDiff(to_add=adde, to_del=dele)
+        # Serialize the Out transactions
+        out_utxo = []
+        for pos, outtx in enumerate(self.outTx):
+            outkey = pack("32sI", self.id(), pos)
+            outvalue = pack("32sQ", outtx.key_id, outtx.value)
+            out_utxo += [(outkey, outvalue)]
+
+        return in_utxo, out_utxo
+
 
     def check_transaction(self, past_tx, keys, sigs):
         """ Checks that a transaction is valid given evidence """
@@ -142,6 +154,39 @@ class Tx:
             k = Key(okey)
             all_good &= (oTx.outTx[txin.pos].key_id == k.id())
             val += oTx.outTx[txin.pos].value
+
+            # Check the signature matches
+            all_good &= k.verify(self.id(), osig)
+
+        # Check the value matches
+        total_value = sum([o.value for o in self.outTx])
+        all_good &= (val == total_value)
+
+        return all_good
+
+
+    def check_transaction_utxo(self, past_utxo, keys, sigs):
+        """ Checks that a transaction is valid given evidence """
+
+        all_good = True
+        all_good &= (len(past_utxo) == len(keys) == len(sigs) == len(self.inTx))
+        if not all_good:
+            return False
+
+        val = 0
+        for (utxo, okey, osig, txin) in zip(past_utxo, keys, sigs, self.inTx):
+            (txid, txpos, txkeyid, txval) = utxo
+
+            # Check the transaction ID matches
+            all_good &= (txid == txin.tx_id)
+            all_good &= (txpos == txin.pos)
+            if not all_good:
+                return False
+
+            # Check the key matches
+            k = Key(okey)
+            all_good &= (txkeyid == k.id())
+            val += txval
 
             # Check the signature matches
             all_good &= k.verify(self.id(), osig)
