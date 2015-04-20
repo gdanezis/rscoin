@@ -1,3 +1,4 @@
+# from line_profiler import profile
 
 from hashlib import sha256
 from binascii import hexlify
@@ -40,6 +41,7 @@ def test_checks1():
                             [k1.export()[0], k2.export()[0]], 
                             [k1.sign(tx3.id()), k2.sign(tx3.id())])
 
+# @profile
 def test_checks_timing():
 
     params = []
