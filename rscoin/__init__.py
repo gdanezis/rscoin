@@ -113,16 +113,19 @@ class Tx:
         """ Return the fingerprint of the tranaction """
         return sha256(self.serialize()).digest()
 
-    def get_utxo_entries(self, in_keys, in_vals):
+    def get_utxo_in_keys(self):
         """ Returns the entries for the utxo for valid transactions """
-    
+
         in_utxo = []
         # Package the inputs
-        for intx, inkey, inval in zip(self.inTx, in_keys, in_vals):
+        for intx in self.inTx:
             inkey = pack("32sI", intx.tx_id, intx.pos)
-            invalue = pack("32sQ", inkey, inval)
-            in_utxo += [(inkey, invalue)]
+            in_utxo += [inkey]
+        return in_utxo
 
+    def get_utxo_out_entries(self):
+        """ Returns the entries for the utxo for valid transactions """
+    
         # Serialize the Out transactions
         out_utxo = []
         for pos, outtx in enumerate(self.outTx):
@@ -130,7 +133,7 @@ class Tx:
             outvalue = pack("32sQ", outtx.key_id, outtx.value)
             out_utxo += [(outkey, outvalue)]
 
-        return in_utxo, out_utxo
+        return out_utxo
 
 
     def check_transaction(self, past_tx, keys, sigs):
@@ -141,28 +144,19 @@ class Tx:
         if not all_good:
             return False
 
-        val = 0
-        for (otx, okey, osig, txin) in zip(past_tx, keys, sigs, self.inTx):
+        out_utxo = []
+        for (otx, txin) in zip(past_tx, self.inTx):
             # Check the transaction ID matches
             oTx = Tx.parse(otx)
+
             all_good &= (txin.tx_id == oTx.id())
             all_good &= (0 <= txin.pos < len(oTx.outTx))
-            if not all_good:
-                return False
 
-            # Check the key matches
-            k = Key(okey)
-            all_good &= (oTx.outTx[txin.pos].key_id == k.id())
-            val += oTx.outTx[txin.pos].value
+            outtx = oTx.outTx[txin.pos]
+            out_utxo += [(txin.tx_id, txin.pos, outtx.key_id, outtx.value)]
 
-            # Check the signature matches
-            all_good &= k.verify(self.id(), osig)
+        return self.check_transaction_utxo(out_utxo, keys, sigs)
 
-        # Check the value matches
-        total_value = sum([o.value for o in self.outTx])
-        all_good &= (val == total_value)
-
-        return all_good
 
 
     def check_transaction_utxo(self, past_utxo, keys, sigs):

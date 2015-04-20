@@ -66,9 +66,8 @@ def test_utxo_entries():
 
     tx3 = Tx([InputTx(tx1.id(), 0), InputTx(tx2.id(), 0)], [OutputTx(k1.id(), 250)])
 
-    r = tx3.get_utxo_entries([k1.export(), k2.export()], [100, 150])
-    assert len(r[0]) == 2 # 2 inputs
-    assert len(r[1]) == 1 # 1 outputs
+    assert len(tx3.get_utxo_in_keys()) == 2 # 2 inputs
+    assert len(tx3.get_utxo_out_entries()) == 1 # 1 outputs
 
 
 # @profile
