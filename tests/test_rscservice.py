@@ -1,12 +1,12 @@
 from base64 import b64encode, b64decode
 from hashlib import sha256
+import os.path
+from os import urandom
+
+from twisted.test.proto_helpers import StringTransport
 
 import rscoin
 from rscoin.rscservice import RSCFactory
-
-from twisted.test.proto_helpers import StringTransport
-import os.path
-from os import urandom
 
 import pytest
 
@@ -140,4 +140,29 @@ def test_TxCommit(sometx):
 
     k3 = rscoin.Key(b64decode(pub))
     assert k3.verify(tx3.id(), b64decode(sig))
-    
+
+def test_TxCommit_Issued(sometx):
+    (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
+
+    kIssue = rscoin.Key(urandom(32), public=False)
+    pubIssue = kIssue.pub.export()
+    factory.special_key = pubIssue
+
+    k1 = rscoin.Key(urandom(32), public=False)
+    k1pub = k1.pub.export()
+
+    tx3 = rscoin.Tx([], [rscoin.OutputTx(k1.id(), 250)])
+
+    sig1 = kIssue.sign(tx3.id())
+    assert tx3.check_transaction_utxo([], [pubIssue], 
+                            [sig1], masterkey = pubIssue)
+
+    ## Now we test the Commit
+    data1 = map(b64encode, [tx3.serialize(), pubIssue, sig1])
+
+    tr.clear()
+    data = " ".join(["Commit", str(len(data1))] + data1)
+    instance.lineReceived(data)
+
+    ret = tr.value()
+    assert ret.split(" ")[0] == "OK"

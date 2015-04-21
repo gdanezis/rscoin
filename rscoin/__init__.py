@@ -140,7 +140,18 @@ class Tx:
     def check_transaction(self, past_tx, keys, sigs, masterkey=None):
         """ Checks that a transaction is valid given evidence """
 
+        # Coin generation / Issuing transaction
         all_good = True
+        if len(past_tx) == 0:
+            all_good &= (len(past_tx) == len(self.inTx) == 0)
+            all_good &= (len(keys) == len(sigs) == 1)
+            all_good &= (keys[0] == masterkey)
+
+            k = Key(keys[0])
+            all_good &= k.verify(self.id(), sigs[0])
+            return all_good
+
+        # Other transcations
         all_good &= (len(past_tx) == len(keys) == len(sigs) == len(self.inTx))
         if not all_good:
             return False
