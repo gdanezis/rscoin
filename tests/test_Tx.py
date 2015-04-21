@@ -12,6 +12,9 @@ from rscoin import Key, Tx, InputTx, OutputTx
 
 def test_test():
     assert True
+    # D = EcGroup.list_curves()
+    # for x in D:
+    #    print "%s\t%s" % (x, D[x])
 
 
 def test_Tx():
@@ -66,8 +69,7 @@ def test_utxo_check_issuing():
 
     tx3 = Tx([], [OutputTx(k1.id(), 250)])
 
-    assert tx3.check_transaction_utxo([], 
-                            [pubIssue], 
+    assert tx3.check_transaction_utxo([], [pubIssue], 
                             [kIssue.sign(tx3.id())], masterkey = pubIssue)
 
 

@@ -13,13 +13,14 @@ InputTx = namedtuple('InputTx', ['tx_id', 'pos'])
 OutputTx = namedtuple('OutputTx', ['key_id', 'value'])
 UtxoDiff = namedtuple('UtxoDIff', ['to_add', 'to_del'])
 
+_globalECG = EcGroup()
 
 class Key:
     """ Represents a key pair (or just a public key)"""
 
     def __init__(self, key_bytes, public=True):
         """ Make a key given a public or private key in bytes """
-        self.G = EcGroup()
+        self.G = _globalECG
         if public:
             self.sec = None
             self.pub = EcPt.from_binary(key_bytes, self.G)
@@ -91,7 +92,7 @@ class Tx:
 
     @staticmethod
     def parse(data):
-        """ Parse a serliazed transaction """
+        """ Parse a serialized transaction """
         Lin, Lout = unpack("HH", data[:4])
         data = data[4:]
 
@@ -163,10 +164,10 @@ class Tx:
         """ Checks that a transaction is valid given evidence """
 
         all_good = True
-        
+
         ## Special issuing transaction -- has no parents
         if len(past_utxo) == 0:
-            all_good &= (len(self.inTx) == 0)
+            all_good &= (len(past_utxo) == len(self.inTx) == 0)
             all_good &= (len(keys) == len(sigs) == 1)
             all_good &= (keys[0] == masterkey)
 
