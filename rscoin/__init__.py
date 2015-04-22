@@ -98,7 +98,7 @@ class Tx:
 
         inTx = []
         for _ in range(Lin):
-            idx, posx = unpack("32sL", data[:32+4])
+            idx, posx = unpack("32sI", data[:32+4])
             inTx += [InputTx(idx, posx)]
             data = data[32+4:]
 
