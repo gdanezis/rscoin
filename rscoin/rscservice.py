@@ -115,6 +115,11 @@ class RSCProtocol(LineReceiver):
         if items[0] == "Commit":
             return self.handle_Commit(items) # Seal a transaction
 
+        if items[0] == "Ping":
+            self.sendLine("Pong")
+            return # self.handle_Commit(items) # Seal a transaction
+
+
         self.return_Err("UnknownCommand")
         return
 

@@ -160,9 +160,28 @@ def test_TxCommit_Issued(sometx):
     ## Now we test the Commit
     data1 = map(b64encode, [tx3.serialize(), pubIssue, sig1])
 
+    # Ensure the entries are not in before sending message
+    for k, v in tx3.get_utxo_out_entries():
+        assert k not in factory.db
+
+    # Send message
     tr.clear()
     data = " ".join(["Commit", str(len(data1))] + data1)
     instance.lineReceived(data)
 
-    ret = tr.value()
-    assert ret.split(" ")[0] == "OK"
+    # Ensure the returned signatures check
+    ret, pub, sig = tr.value().split(" ")
+    assert ret == "OK"
+    kx = rscoin.Key(b64decode(pub))
+    assert kx.verify(tx3.id(), b64decode(sig))
+
+    # Ensure the entries are now in
+    for k, v in tx3.get_utxo_out_entries():
+        assert factory.db[k] == v
+
+def test_Ping(sometx):
+    (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
+
+    instance.lineReceived("Ping")
+    assert tr.value().strip() == "Pong"
+
