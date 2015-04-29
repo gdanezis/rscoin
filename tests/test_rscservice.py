@@ -206,3 +206,11 @@ def test_setup():
 
     assert public == directory[0][0]
     assert public_special == stuff["special"]
+
+def test_multiple():
+    
+    all_keys = []
+    for x in range(100):
+        secret = "KEY%s" % x
+        public = rscoin.Key(secret, public=False).pub.export()
+        all_keys += [(public, secret)]
