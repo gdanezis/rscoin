@@ -6,7 +6,7 @@ from os import urandom
 from twisted.test.proto_helpers import StringTransport
 
 import rscoin
-from rscoin.rscservice import RSCFactory
+from rscoin.rscservice import RSCFactory, load_setup
 
 import pytest
 
@@ -185,3 +185,24 @@ def test_Ping(sometx):
     instance.lineReceived("Ping")
     assert tr.value().strip() == "Pong"
 
+
+def test_setup():
+    data = """{
+        "special": "YYY",
+        "directory": [ ["127.0.0.1", 8080, "AvpvsXkgi/VKmedycxRiX1Bc7vbh9l6ajRbXkbU="] ] 
+    }"""
+
+    stuff = load_setup(data)
+    secret = "hello1"
+    directory = stuff["directory"]
+    directory = [(ip.encode("utf8"), port, b64decode(key.encode("utf8"))) for ip, port, key in directory]
+
+
+    print("\nSecret: %s" % secret)
+
+    public = rscoin.Key(secret, public=False).pub.export()
+    print("Public: %s" % b64encode(public)) # , b64decode
+
+    assert public == directory[0][2]
+
+    directory = [("127.0.0.1", 8080, public)]

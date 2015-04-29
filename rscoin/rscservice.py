@@ -1,6 +1,7 @@
 from base64 import b64encode, b64decode
 from binascii import hexlify
 
+from json import loads
 from bisect import bisect_left
 import bsddb
 from traceback import print_stack, print_exc
@@ -12,11 +13,20 @@ from twisted.protocols.basic import LineReceiver
 
 import rscoin
 
+def load_setup(setup_data):
+    structure = loads(setup_data)
+
+    return structure
+
+
 class RSCProtocol(LineReceiver):
+
     def __init__(self, factory):
         self.factory = factory
 
     def parse_Tx_bundle(self , bundle_items, items):
+        """ Common parsing code for the Tx bundle """
+
         assert len(items) == bundle_items
         H = sha256(" ".join(items)).digest()
 
@@ -42,6 +52,7 @@ class RSCProtocol(LineReceiver):
 
 
     def handle_Query(self, items):
+        """ Process the query message and respond """
         bundle_size = int(items[1])
 
         try:
@@ -74,6 +85,7 @@ class RSCProtocol(LineReceiver):
         return
 
     def handle_Commit(self, items):
+        """ Process the commit message and respond """
         bundle_size = int(items[1])
 
         try:
@@ -108,6 +120,7 @@ class RSCProtocol(LineReceiver):
 
 
     def lineReceived(self, line):
+        """ Simple de-multiplexer """
         items = line.split(" ")
         if items[0] == "Query":
             return self.handle_Query(items) # Get signatures           
@@ -124,6 +137,7 @@ class RSCProtocol(LineReceiver):
         return
 
     def sign(self, H):
+        """ Generic signature """
         k = self.factory.key
         pub = k.pub.export()
         sig = k.sign(H)
@@ -135,7 +149,9 @@ class RSCProtocol(LineReceiver):
 
 
 class RSCFactory(protocol.Factory):
+
     def __init__(self, secret, directory, special_key):
+        """ Initialize the RSCoin server"""
         self.special_key = special_key
         self.key = rscoin.Key(secret, public=False)
         self.directory = sorted(directory)
@@ -222,6 +238,9 @@ class RSCFactory(protocol.Factory):
             ## Ensure we have a Quorum for each input
             aut = set(x for x, _ , _ in self.get_authorities(itx))
             all_good &= (len(aut & pub_set) > len(aut) / 2) 
+
+        # Now check we have not already spent the transaction
+        all_good &= (mid not in self.log)
             
         if not all_good:
             return False

@@ -3,6 +3,7 @@ from rscoin.rscservice import RSCFactory
 
 import rscoin
 
+
 secret = "A" * 32
 public = rscoin.Key(secret, public=False).pub.export()
 directory = [("127.0.0.1", 8080, public)]
