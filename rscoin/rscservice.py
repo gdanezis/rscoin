@@ -6,7 +6,7 @@ from bisect import bisect_left
 import bsddb
 from traceback import print_stack, print_exc
 from hashlib import sha256
-
+from os.path import join
 
 from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
@@ -152,7 +152,7 @@ class RSCProtocol(LineReceiver):
 
 class RSCFactory(protocol.Factory):
 
-    def __init__(self, secret, directory, special_key):
+    def __init__(self, secret, directory, special_key, conf_dir=None):
         """ Initialize the RSCoin server"""
         self.special_key = special_key
         self.key = rscoin.Key(secret, public=False)
@@ -161,8 +161,13 @@ class RSCFactory(protocol.Factory):
 
         # Open the databases
         self.dbname = 'keys-%s.db' % hexlify(keyID)
-        self.db = bsddb.btopen(self.dbname, 'c')
         self.logname = 'log-%s.db' % hexlify(keyID)
+        
+        if conf_dir:
+            self.dbname = join(conf_dir, self.dbname)
+            self.logname = join(conf_dir, self.logname)
+
+        self.db = bsddb.btopen(self.dbname, 'c')
         self.log = bsddb.btopen(self.logname, 'c')
 
     

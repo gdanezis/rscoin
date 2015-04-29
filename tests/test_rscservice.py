@@ -208,9 +208,24 @@ def test_setup():
     assert public_special == stuff["special"]
 
 def test_multiple():
+
+    # Make special keys for making coins
+    secret_special = "KEYSPECIAL"
+    public_special = rscoin.Key(secret_special, public=False).pub.export()
     
+    # Define a number of keys
     all_keys = []
     for x in range(100):
         secret = "KEY%s" % x
         public = rscoin.Key(secret, public=False).pub.export()
         all_keys += [(public, secret)]
+
+    # Make up the directory
+    directory = []
+    for x, (pub, _) in enumerate(all_keys):
+        directory += [(pub, "127.0.0.1", 8080 + x)]
+
+    # Build the factories
+    factories = {}
+    for pub, sec in all_keys:
+        factory = RSCFactory(sec, directory, public_special, conf_dir="scratch")
