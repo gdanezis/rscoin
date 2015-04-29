@@ -25,7 +25,7 @@ class Key:
             self.sec = None
             self.pub = EcPt.from_binary(key_bytes, self.G)
         else:
-            self.sec = Bn.from_binary(key_bytes)
+            self.sec = Bn.from_binary(sha256(key_bytes).digest())
             self.pub = self.sec * self.G.generator()
 
     def sign(self, message):

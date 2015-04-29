@@ -188,21 +188,21 @@ def test_Ping(sometx):
 
 def test_setup():
     data = """{
-        "special": "YYY",
-        "directory": [ ["127.0.0.1", 8080, "AvpvsXkgi/VKmedycxRiX1Bc7vbh9l6ajRbXkbU="] ] 
+        "special": "AmodBjXyo2bVqyi1h0e5Kf8hSbGCmalnbF8YwJ0=",
+        "directory": [ ["A/Sw7CRkoXzB2O0A3WfPMSDIbv/pOxd5Co3u9kM=", "127.0.0.1", 8080] ] 
     }"""
 
     stuff = load_setup(data)
+    
     secret = "hello1"
+    special = "special"
     directory = stuff["directory"]
-    directory = [(ip.encode("utf8"), port, b64decode(key.encode("utf8"))) for ip, port, key in directory]
-
-
-    print("\nSecret: %s" % secret)
 
     public = rscoin.Key(secret, public=False).pub.export()
-    print("Public: %s" % b64encode(public)) # , b64decode
+    print("\nPublic: %s" % b64encode(public)) # , b64decode
 
-    assert public == directory[0][2]
+    public_special = rscoin.Key(special, public=False).pub.export()
+    print("Public (special): %s" % b64encode(public_special)) # , b64decode
 
-    directory = [("127.0.0.1", 8080, public)]
+    assert public == directory[0][0]
+    assert public_special == stuff["special"]

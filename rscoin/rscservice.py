@@ -15,6 +15,8 @@ import rscoin
 
 def load_setup(setup_data):
     structure = loads(setup_data)
+    structure["special"] = b64decode(structure["special"])
+    structure["directory"] = [(b64decode(a), b, c) for a,b,c in structure["directory"]]
 
     return structure
 
