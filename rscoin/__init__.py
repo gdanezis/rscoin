@@ -7,11 +7,7 @@ from petlib.ec import EcGroup, EcPt
 from petlib.bn import Bn
 from petlib.ecdsa import do_ecdsa_sign, do_ecdsa_verify
 
-
-# Named structures
-InputTx = namedtuple('InputTx', ['tx_id', 'pos'])
-OutputTx = namedtuple('OutputTx', ['key_id', 'value'])
-UtxoDiff = namedtuple('UtxoDIff', ['to_add', 'to_del'])
+from os import urandom
 
 _globalECG = EcGroup()
 
@@ -61,18 +57,29 @@ class Key:
         return (self.pub.export(), sec)
 
 
+# Named structures
+InputTx = namedtuple('InputTx', ['tx_id', 'pos'])
+OutputTx = namedtuple('OutputTx', ['key_id', 'value'])
+
+
 class Tx:
     """ Represents a transaction """
 
-    def __init__(self, inTx=[], outTx=[]):
+    def __init__(self, inTx=[], outTx=[], R=None):
         """ Initialize a transaction """
-        self.inTx = inTx
-        self.outTx = outTx
+        self.inTx = inTx    # list of InputTx
+        self.outTx = outTx  # list of OutputTx
+
+        self.R = R
+        if self.R is None:
+            self.R = urandom(32)
 
     def serialize(self):
         """ Turn this transaction into a cannonical byte string """
 
         ser = pack("HH", len(self.inTx), len(self.outTx))
+
+        ser += pack("32s", self.R)
 
         # Serialize the In transations
         for intx in self.inTx:
@@ -96,6 +103,9 @@ class Tx:
         Lin, Lout = unpack("HH", data[:4])
         data = data[4:]
 
+        R = unpack("32s", data[:32])[0]
+        data = data[32:]
+
         inTx = []
         for _ in range(Lin):
             idx, posx = unpack("32sI", data[:32+4])
@@ -108,7 +118,7 @@ class Tx:
             outTx += [OutputTx(kidx, valx)]
             data = data[32+8:]
 
-        return Tx(inTx, outTx)
+        return Tx(inTx, outTx, R=R)
 
     def id(self):
         """ Return the fingerprint of the tranaction """
@@ -216,3 +226,4 @@ class Tx:
         all_good &= (val == total_value)
 
         return all_good
+

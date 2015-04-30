@@ -6,14 +6,14 @@ from os import urandom
 from twisted.test.proto_helpers import StringTransport
 
 import rscoin
-from rscoin.rscservice import RSCFactory, load_setup
+from rscoin.rscservice import RSCFactory, load_setup, get_authorities
 
 import pytest
 
 @pytest.fixture
 def sometx():
     secret = "A" * 32
-    public = rscoin.Key(secret, public=False).pub.export()
+    public = rscoin.Key(secret, public=False).id()
     directory = [(public, "127.0.0.1", 8080)]
 
     factory = RSCFactory(secret, directory, None)
@@ -39,7 +39,7 @@ def sometx():
 
 def test_factory():
     secret = "A" * 32
-    public = rscoin.Key(secret, public=False).pub.export()
+    public = rscoin.Key(secret, public=False).id()
     directory = [(public, "127.0.0.1", 8080)]
 
     factory = RSCFactory(secret, directory, None)
@@ -75,6 +75,8 @@ def test_TxQuery(sometx):
                             [k1.sign(tx3.id()), k2.sign(tx3.id())])
 
     # Put the transaction through
+    print "Number of Authorities: %s" % len(factory.get_authorities(tx1.id()))
+    assert factory.key.id() in factory.get_authorities(tx1.id())
     assert factory.process_TxQuery(data)
 
     for ik in tx3.get_utxo_in_keys():
@@ -217,7 +219,7 @@ def test_multiple():
     all_keys = []
     for x in range(100):
         secret = "KEY%s" % x
-        public = rscoin.Key(secret, public=False).pub.export()
+        public = rscoin.Key(secret, public=False).id()
         all_keys += [(public, secret)]
 
     # Make up the directory
@@ -229,3 +231,51 @@ def test_multiple():
     factories = {}
     for pub, sec in all_keys:
         factory = RSCFactory(sec, directory, public_special, conf_dir="scratch")
+        factories[pub] = factory
+
+    # Make a mass of transactions
+    k1 = rscoin.Key(urandom(32), public=False)
+    k2 = rscoin.Key(urandom(32), public=False)
+
+    all_tx_in = []
+    all_tx_out = []
+
+    for _ in range(10):
+
+        tx1 = rscoin.Tx([], [rscoin.OutputTx(k1.id(), 100)]) 
+        tx2 = rscoin.Tx([], [rscoin.OutputTx(k2.id(), 150)])
+
+        tx3 = rscoin.Tx( [rscoin.InputTx(tx1.id(), 0), 
+                         rscoin.InputTx(tx2.id(), 0)], 
+                         [rscoin.OutputTx(k1.id(), 250)] )
+
+        all_tx_in += [ tx1, tx2 ]
+        all_tx_out += [ tx3 ]
+
+    print "Lens: all_tx_in: %s all_tx_out: %s" % (len(all_tx_in), len(all_tx_out))
+    
+    for tx in all_tx_in:
+        for kv, vv in tx.get_utxo_out_entries():
+            for f in factories.values():
+                f.db[kv] = vv
+
+
+    data = (tx3, [tx1.serialize(), tx2.serialize()], 
+                            [k1.export()[0], k2.export()[0]], 
+                            [k1.sign(tx3.id()), k2.sign(tx3.id())])
+
+    # Put the transaction through
+    total = 0
+    au1 = get_authorities(directory, tx1.id())
+    au2 = get_authorities(directory, tx2.id())
+    
+    x = set(au1 + au2)
+    assert len(x) == 10
+
+
+    for f in factories.values():
+        resp = f.process_TxQuery(data)
+        # print(resp)
+        if resp:
+            total += 1
+    assert total == 10
