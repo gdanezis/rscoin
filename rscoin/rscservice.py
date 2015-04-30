@@ -295,5 +295,4 @@ def get_authorities(directory, xID, N = 5):
         return [di[0] for di in d]
 
     i = bisect_left(d, (xID, None, None))
-
     return [d[(i + j - 1) % len(d)][0] for j in range(N)]

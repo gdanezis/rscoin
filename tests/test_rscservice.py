@@ -269,8 +269,8 @@ def test_multiple():
     au1 = get_authorities(directory, tx1.id())
     au2 = get_authorities(directory, tx2.id())
     
-    x = set(au1 + au2)
-    assert len(x) == 10
+    auxes = set(au1 + au2)
+    assert len(auxes) == 10
 
 
     for f in factories.values():
@@ -278,4 +278,5 @@ def test_multiple():
         # print(resp)
         if resp:
             total += 1
+            assert f.pub.id() in auxes
     assert total == 10
