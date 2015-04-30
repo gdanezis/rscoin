@@ -266,17 +266,30 @@ def test_multiple():
 
     # Put the transaction through
     total = 0
-    au1 = get_authorities(directory, tx1.id())
-    au2 = get_authorities(directory, tx2.id())
+
+    [ kid1, kid2 ] = tx3.get_utxo_in_keys()
+    au1 = get_authorities(directory, kid1)
+    au2 = get_authorities(directory, kid2)
     
     auxes = set(au1 + au2)
+
     assert len(auxes) == 10
+    for aid in auxes:
+        assert isinstance(aid, str) and len(aid) == 32
+        assert aid in factories
 
-
-    for f in factories.values():
+    xset = []
+    for kid, f in factories.iteritems():
         resp = f.process_TxQuery(data)
         # print(resp)
+        assert kid == f.key.id()
         if resp:
             total += 1
-            assert f.pub.id() in auxes
-    assert total == 10
+            xset += [ f.key.id() ]
+            #assert f.key.id() in auxes
+        else:
+            pass
+            #assert f.key.id() not in auxes
+    assert 5 <= total <= 10
+    print "LLL: ", len(set(auxes) & set(xset) )
+    assert set(auxes) == set(xset)

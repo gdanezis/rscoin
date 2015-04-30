@@ -285,7 +285,7 @@ class RSCFactory(protocol.Factory):
 
 def get_authorities(directory, xID, N = 5):
     """ Returns the keys of the authorities for a certain xID """
-    d = directory
+    d = sorted(directory)
     
     if __debug__:
         for di, _, _ in d:
