@@ -8,6 +8,8 @@ from traceback import print_stack, print_exc
 from hashlib import sha256
 from os.path import join
 
+from petlib.ec import EcPt
+
 from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
 
@@ -133,7 +135,7 @@ class RSCProtocol(LineReceiver):
             return self.handle_Commit(items) # Seal a transaction
 
         if items[0] == "Ping":
-            self.sendLine("Pong")
+            self.sendLine("Pong %s" % b64encode(self.factory.key.id()))
             return # self.handle_Commit(items) # Seal a transaction
 
 
@@ -143,7 +145,7 @@ class RSCProtocol(LineReceiver):
     def sign(self, H):
         """ Generic signature """
         k = self.factory.key
-        pub = k.pub.export()
+        pub = k.pub.export(EcPt.POINT_CONVERSION_UNCOMPRESSED)
         sig = k.sign(H)
         return " ".join(map(b64encode, [pub, sig]))
 
@@ -153,6 +155,8 @@ class RSCProtocol(LineReceiver):
 
 
 class RSCFactory(protocol.Factory):
+
+    _sync = False
 
     def __init__(self, secret, directory, special_key, conf_dir=None):
         """ Initialize the RSCoin server"""
@@ -217,6 +221,7 @@ class RSCFactory(protocol.Factory):
                 continue
             ## Otherwise it should not have been used yet
             elif ik not in self.db:
+                print b64encode(ik)[:8]
                 print("Failed utxo check")
                 return False
 
@@ -228,8 +233,9 @@ class RSCFactory(protocol.Factory):
             self.log[ik] = mid
 
         # Save before signing
-        self.db.sync() 
-        self.log.sync()       
+        if RSCFactory._sync:
+            self.db.sync() 
+            self.log.sync()       
         return True
 
     def process_TxCommit(self, data):
@@ -273,7 +279,9 @@ class RSCFactory(protocol.Factory):
         # Update the outTx entries
         for k, v in mainTx.get_utxo_out_entries():
             self.db[k] = v
-        self.db.sync()
+        
+        if RSCFactory._sync:
+            self.db.sync()
 
         return all_good
 

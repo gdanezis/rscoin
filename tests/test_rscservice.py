@@ -1,7 +1,14 @@
+if __name__ == "__main__":
+
+    import sys
+    sys.path += [ "." ]
+
 from base64 import b64encode, b64decode
 from hashlib import sha256
 import os.path
 from os import urandom
+from timeit import default_timer as timer
+
 
 from twisted.test.proto_helpers import StringTransport
 
@@ -90,6 +97,35 @@ def test_TxQuery(sometx):
 
     assert not factory.process_TxQuery(data2)
 
+
+def package_query(tx, tx_deps, keys):
+
+    items = [ tx.serialize() ]
+    for txi in tx_deps:
+        items += [ txi.serialize() ]
+
+    for k in keys:
+        items += [ k.export()[0] ]        
+
+    for k in keys:
+        items += [ k.sign(tx.id()) ]
+
+    dataCore = map(b64encode, items)    
+    
+    H = sha256(" ".join(dataCore)).digest()
+    data = " ".join(["Query", str(len(dataCore))] + dataCore)
+
+    return H, data, dataCore
+
+def unpackage_query_response(response):
+    resp = response.strip().split(" ")
+    
+    code = resp[0]
+    if code == "OK" or code == "Pong":
+        resp[1:] = map(b64decode, resp[1:])
+
+    return resp
+
 def test_TxQuery_serialize(sometx):
     (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
 
@@ -97,17 +133,12 @@ def test_TxQuery_serialize(sometx):
     for ik in tx3.get_utxo_in_keys():
         assert ik in factory.db
 
-    data = map(b64encode, [tx3.serialize(), tx1.serialize(), tx2.serialize(), 
-                k1.export()[0], k2.export()[0], k1.sign(tx3.id()), k2.sign(tx3.id())])
-
-    H = sha256(" ".join(data)).digest()
-
-    data = " ".join(["Query", str(len(data))] + data)
+    H, data, _ = package_query(tx3, [tx1, tx2], [k1, k2])
 
     instance.lineReceived(data)
     response = tr.value()
-    
-    k, s = map(b64decode, response.split(" ")[1:])
+
+    _, k, s = unpackage_query_response(response)    
     assert factory.key.verify(H, s)
 
 def test_TxCommit(sometx):
@@ -185,7 +216,9 @@ def test_Ping(sometx):
     (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
 
     instance.lineReceived("Ping")
-    assert tr.value().strip() == "Pong"
+
+    assert unpackage_query_response(tr.value()) == ["Pong", factory.key.id()]
+    assert tr.value().strip() == "Pong %s" % b64encode(factory.key.id())
 
 
 def test_setup():
@@ -291,5 +324,136 @@ def test_multiple():
             pass
             #assert f.key.id() not in auxes
     assert 5 <= total <= 10
-    print "LLL: ", len(set(auxes) & set(xset) )
     assert set(auxes) == set(xset)
+
+@pytest.fixture
+def msg_mass():
+
+    secret = "A" * 32
+    public = rscoin.Key(secret, public=False).id()
+    directory = [(public, "127.0.0.1", 8080)]
+
+    factory = RSCFactory(secret, directory, None)
+    
+    # Run the protocol
+    instance = factory.buildProtocol(None)
+    tr = StringTransport()
+    instance.makeConnection(tr)
+
+    sometx = (factory, instance, tr)
+
+
+    # Make special keys for making coins
+    secret_special = "KEYSPECIAL"
+    public_special = rscoin.Key(secret_special, public=False).pub.export()
+    
+    # Define a number of keys
+    all_keys = []
+    secret = "KEYX"
+    public = rscoin.Key(secret, public=False).id()
+    
+    directory = [(public, "127.0.0.1", 8080 )]
+
+    # Make a mass of transactions
+    k1 = rscoin.Key(urandom(32), public=False)
+    k2 = rscoin.Key(urandom(32), public=False)
+
+    all_tx = []
+
+    for _ in range(1000):
+
+        tx1 = rscoin.Tx([], [rscoin.OutputTx(k1.id(), 100)]) 
+        tx2 = rscoin.Tx([], [rscoin.OutputTx(k2.id(), 150)])
+
+        tx3 = rscoin.Tx( [rscoin.InputTx(tx1.id(), 0), 
+                         rscoin.InputTx(tx2.id(), 0)], 
+                         [rscoin.OutputTx(k1.id(), 250)] )
+
+        all_tx += [ ([tx1, tx2], tx3) ]
+
+    for intx, _ in all_tx:
+        for tx in intx:
+            for kv, vv in tx.get_utxo_out_entries():
+                factory.db[kv] = vv
+
+    mesages_q = []
+
+    for ([tx1, tx2], tx3) in all_tx:
+        H, data, core = package_query(tx3, [tx1, tx2], [k1, k2])
+        mesages_q += [ (tx3, data, core) ]
+
+    return (sometx, mesages_q)
+
+def test_full_client(msg_mass):
+    ## Run a single client on single CPU and test-stress it.
+    
+    (sometx, mesages_q) = msg_mass
+    #print len(msg_mass), msg_mass
+    (factory, instance, tr) = sometx
+
+    responses = []
+    t0 = timer()
+    for (tx, data, core) in mesages_q:
+        tr.clear()
+        instance.lineReceived(data)
+        response = tr.value()
+        responses += [(tx, data, core, response)]
+    t1 = timer()
+    print "\nQuery message rate: %2.2f / sec" % (1.0 / ((t1-t0)/(len(mesages_q))))
+
+    # k, s = map(b64decode, response.split(" ")[1:])
+    # k2 = rscoin.Key(k)
+    # assert factory.key.verify(H, s)
+    # assert k2.verify(H, s)
+
+    ## Now we test the Commit
+    #tr.clear()
+    t0 = timer()
+    for (tx, data, core, response) in responses:
+        resp = response.split(" ")
+        k, s = map(b64decode, resp[1:])
+        assert resp[0] == "OK"
+        tr.clear()
+        data = " ".join(["Commit", str(len(core))] + core + map(b64encode, [k, s]))
+        instance.lineReceived(data)
+        flag, pub, sig = tr.value().split(" ")
+        assert flag == "OK"
+    t1 = timer()
+    print "\nCommit message rate: %2.2f / sec" % (1.0 / ((t1-t0)/(len(responses))))
+
+    
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Test and time the Tor median statistics.')
+    parser.add_argument('--time', action='store_true', help='Run timing tests')
+    parser.add_argument('--lprof', action='store_true', help='Run the line profiler')
+    parser.add_argument('--cprof', action='store_true', help='Run the c profiler')
+    parser.add_argument('--plot', action='store_true', help='Upload time plot to plotly')
+
+
+    args = parser.parse_args()
+
+    if args.time:
+        xxx = msg_mass()
+        test_full_client(xxx)
+
+
+    if args.cprof:
+        import cProfile
+        
+        xxx = msg_mass()
+        cProfile.run("test_full_client(xxx)", sort="tottime")
+
+    if args.lprof:
+        from line_profiler import LineProfiler
+        #import rscoin.rscservice
+
+        profile = LineProfiler(rscoin.rscservice.RSCProtocol.handle_Query, 
+                                rscoin.rscservice.RSCFactory.process_TxQuery,
+                                rscoin.Tx.check_transaction,
+                                rscoin.Tx.parse)
+        xxx = msg_mass()
+        profile.run("test_full_client(xxx)")
+        profile.print_stats()
+

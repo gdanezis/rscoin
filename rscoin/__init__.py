@@ -54,7 +54,7 @@ class Key:
         sec = None
         if self.sec is not None:
             sec = self.sec.binary()
-        return (self.pub.export(), sec)
+        return (self.pub.export(EcPt.POINT_CONVERSION_UNCOMPRESSED), sec)
 
 
 # Named structures
@@ -74,8 +74,13 @@ class Tx:
         if self.R is None:
             self.R = urandom(32)
 
+        self.ser = None
+
     def serialize(self):
         """ Turn this transaction into a cannonical byte string """
+
+        if self.ser is not None:
+            return self.ser
 
         ser = pack("HH", len(self.inTx), len(self.outTx))
 
@@ -89,6 +94,8 @@ class Tx:
         for outtx in self.outTx:
             ser += pack("32sQ", outtx.key_id, outtx.value)
 
+        self.ser = ser
+
         return ser
 
     def __eq__(self, other):
@@ -99,26 +106,32 @@ class Tx:
 
     @staticmethod
     def parse(data):
+        idata = data
         """ Parse a serialized transaction """
-        Lin, Lout = unpack("HH", data[:4])
-        data = data[4:]
+        i = 0
+        Lin, Lout, R = unpack("HH32s", data[i:i+4+32])
+        # data = data[4:]
+        #i += 4
 
-        R = unpack("32s", data[:32])[0]
-        data = data[32:]
+        #R = unpack("32s", data[i:i+32])[0]
+        i +=  4+32
 
         inTx = []
         for _ in range(Lin):
-            idx, posx = unpack("32sI", data[:32+4])
+            idx, posx = unpack("32sI", data[i:i+32+4])
             inTx += [InputTx(idx, posx)]
-            data = data[32+4:]
+            i += 32+4
 
         outTx = []
         for _ in range(Lout):
-            kidx, valx = unpack("32sQ", data[:32+8])
+            kidx, valx = unpack("32sQ", data[i:i+32+8])
             outTx += [OutputTx(kidx, valx)]
-            data = data[32+8:]
+            i += 32+8
 
-        return Tx(inTx, outTx, R=R)
+        tx = Tx(inTx, outTx, R=R)
+        
+        tx.ser = idata
+        return tx
 
     def id(self):
         """ Return the fingerprint of the tranaction """
