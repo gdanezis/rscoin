@@ -26,6 +26,37 @@ def load_setup(setup_data):
     return structure
 
 
+def package_query(tx, tx_deps, keys):
+
+    items = [ tx.serialize() ]
+    for txi in tx_deps:
+        items += [ txi.serialize() ]
+
+    for k in keys:
+        items += [ k.export()[0] ]        
+
+    for k in keys:
+        items += [ k.sign(tx.id()) ]
+
+    dataCore = map(b64encode, items)    
+    
+    H = sha256(" ".join(dataCore)).digest()
+    data = " ".join(["Query", str(len(dataCore))] + dataCore)
+
+    return H, data, dataCore
+
+
+def unpackage_query_response(response):
+    resp = response.strip().split(" ")
+    
+    code = resp[0]
+    if code == "OK" or code == "Pong":
+        resp[1:] = map(b64decode, resp[1:])
+
+    return resp
+
+
+
 class RSCProtocol(LineReceiver):
 
     def __init__(self, factory):
