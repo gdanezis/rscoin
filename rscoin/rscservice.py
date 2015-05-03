@@ -3,7 +3,10 @@ from binascii import hexlify
 
 from json import loads
 from bisect import bisect_left
-import bsddb
+# import bsddb
+
+from future.moves import dbm
+
 from traceback import print_stack, print_exc
 from hashlib import sha256
 from os.path import join
@@ -166,15 +169,15 @@ class RSCFactory(protocol.Factory):
         keyID = self.key.id()[:10]
 
         # Open the databases
-        self.dbname = 'keys-%s.db' % hexlify(keyID)
-        self.logname = 'log-%s.db' % hexlify(keyID)
+        self.dbname = 'keys-%s' % hexlify(keyID)
+        self.logname = 'log-%s' % hexlify(keyID)
         
         if conf_dir:
             self.dbname = join(conf_dir, self.dbname)
             self.logname = join(conf_dir, self.logname)
 
-        self.db = bsddb.btopen(self.dbname, 'c')
-        self.log = bsddb.btopen(self.logname, 'c')
+        self.db = dbm.open(self.dbname, 'c')
+        self.log = dbm.open(self.logname, 'c')
 
     
     def buildProtocol(self, addr):
