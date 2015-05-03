@@ -395,6 +395,70 @@ def test_full_client(msg_mass):
     t1 = timer()
     print "\nCommit message rate: %2.2f / sec" % (1.0 / ((t1-t0)/(len(responses))))
 
+@pytest.mark.online
+def test_commit_error(sometx):
+    (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
+
+    instance.lineReceived("Commit X Y Z")
+
+
+
+@pytest.mark.online
+def test_online_ping(sometx):
+    (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
+
+    import socket
+
+    HOST = '52.16.247.68'    # The remote host
+    PORT = 8080              # The same port as used by the server
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((HOST, PORT))
+    s.sendall('Ping\r\n')
+    data = s.recv(5000)
+    s.close()
+    
+    assert unpackage_query_response(data)[0] == "Pong"
+
+
+@pytest.mark.online
+def test_online_issue(sometx):
+
+    (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
+    
+    kIssue = rscoin.Key(file("secret.key").read(), False) # rscoin.Key(urandom(32), public=False)
+    pubIssue = kIssue.pub.export()
+    
+    # Build a new coin
+    k1 = rscoin.Key(urandom(32), public=False)
+    k1pub = k1.pub.export()
+    tx3 = rscoin.Tx([], [rscoin.OutputTx(k1.id(), 250)])
+    sig1 = kIssue.sign(tx3.id())
+
+    ## Now we test the Commit
+    data1 = map(b64encode, [tx3.serialize(), pubIssue, sig1])
+    data = " ".join(["Commit", str(len(data1))] + data1)
+
+    import socket
+    HOST = '52.16.247.68'    # The remote host
+    PORT = 8080              # The same port as used by the server
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((HOST, PORT))
+    s.sendall(data + '\r\n')
+
+    data_rec = ''
+    while "\r\n" not in data_rec:
+        data_rec += s.recv(4096)
+        print "Data: '%s'" % data_rec
+    s.close()
+    
+
+    # Ensure the returned signatures check
+    ret, pub, sig = data_rec.split(" ")
+    assert ret == "OK"
+    kx = rscoin.Key(b64decode(pub))
+    assert kx.verify(tx3.id(), b64decode(sig))
+
+
     
 if __name__ == "__main__":
     import argparse
@@ -431,19 +495,4 @@ if __name__ == "__main__":
         profile.run("test_full_client(xxx)")
         profile.print_stats()
 
-@pytest.mark.online
-def test_online_ping(sometx):
-    (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
 
-    import socket
-
-    HOST = '52.16.247.68'    # The remote host
-    PORT = 8080              # The same port as used by the server
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((HOST, PORT))
-    s.sendall('Ping\r\n')
-    data = s.recv(5000)
-    s.close()
-    
-    assert unpackage_query_response(data)[0] == "Pong"
-    

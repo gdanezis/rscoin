@@ -126,9 +126,11 @@ class RSCProtocol(LineReceiver):
 
     def handle_Commit(self, items):
         """ Process the commit message and respond """
-        bundle_size = int(items[1])
-
+        
         try:
+            bundle_size = int(items[1])
+
+
             extras = items[2+bundle_size:] 
             items = items[2:2+bundle_size]
             H, data = self.parse_Tx_bundle( bundle_size, items)
