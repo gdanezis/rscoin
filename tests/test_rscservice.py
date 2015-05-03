@@ -179,7 +179,7 @@ def test_TxCommit_Issued(sometx):
 
     kIssue = rscoin.Key(urandom(32), public=False)
     pubIssue = kIssue.pub.export()
-    factory.special_key = pubIssue
+    factory.special_key = kIssue.id() # Asssign this as the special key
 
     k1 = rscoin.Key(urandom(32), public=False)
     k1pub = k1.pub.export()
@@ -187,8 +187,7 @@ def test_TxCommit_Issued(sometx):
     tx3 = rscoin.Tx([], [rscoin.OutputTx(k1.id(), 250)])
 
     sig1 = kIssue.sign(tx3.id())
-    assert tx3.check_transaction_utxo([], [pubIssue], 
-                            [sig1], masterkey = pubIssue)
+    assert tx3.check_transaction_utxo([], [pubIssue], [sig1], kIssue.id())
 
     ## Now we test the Commit
     data1 = map(b64encode, [tx3.serialize(), pubIssue, sig1])
