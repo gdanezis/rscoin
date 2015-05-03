@@ -7,11 +7,7 @@ from petlib.ec import EcGroup, EcPt
 from petlib.bn import Bn
 from petlib.ecdsa import do_ecdsa_sign, do_ecdsa_verify
 
-
-# Named structures
-InputTx = namedtuple('InputTx', ['tx_id', 'pos'])
-OutputTx = namedtuple('OutputTx', ['key_id', 'value'])
-UtxoDiff = namedtuple('UtxoDIff', ['to_add', 'to_del'])
+from os import urandom
 
 _globalECG = EcGroup()
 
@@ -25,7 +21,7 @@ class Key:
             self.sec = None
             self.pub = EcPt.from_binary(key_bytes, self.G)
         else:
-            self.sec = Bn.from_binary(key_bytes)
+            self.sec = Bn.from_binary(sha256(key_bytes).digest())
             self.pub = self.sec * self.G.generator()
 
     def sign(self, message):
@@ -58,21 +54,37 @@ class Key:
         sec = None
         if self.sec is not None:
             sec = self.sec.binary()
-        return (self.pub.export(), sec)
+        return (self.pub.export(EcPt.POINT_CONVERSION_UNCOMPRESSED), sec)
+
+
+# Named structures
+InputTx = namedtuple('InputTx', ['tx_id', 'pos'])
+OutputTx = namedtuple('OutputTx', ['key_id', 'value'])
 
 
 class Tx:
     """ Represents a transaction """
 
-    def __init__(self, inTx=[], outTx=[]):
+    def __init__(self, inTx=[], outTx=[], R=None):
         """ Initialize a transaction """
-        self.inTx = inTx
-        self.outTx = outTx
+        self.inTx = inTx    # list of InputTx
+        self.outTx = outTx  # list of OutputTx
+
+        self.R = R
+        if self.R is None:
+            self.R = urandom(32)
+
+        self.ser = None
 
     def serialize(self):
         """ Turn this transaction into a cannonical byte string """
 
+        if self.ser is not None:
+            return self.ser
+
         ser = pack("HH", len(self.inTx), len(self.outTx))
+
+        ser += pack("32s", self.R)
 
         # Serialize the In transations
         for intx in self.inTx:
@@ -81,6 +93,8 @@ class Tx:
         # Serialize the Out transactions
         for outtx in self.outTx:
             ser += pack("32sQ", outtx.key_id, outtx.value)
+
+        self.ser = ser
 
         return ser
 
@@ -92,23 +106,32 @@ class Tx:
 
     @staticmethod
     def parse(data):
+        idata = data
         """ Parse a serialized transaction """
-        Lin, Lout = unpack("HH", data[:4])
-        data = data[4:]
+        i = 0
+        Lin, Lout, R = unpack("HH32s", data[i:i+4+32])
+        # data = data[4:]
+        #i += 4
+
+        #R = unpack("32s", data[i:i+32])[0]
+        i +=  4+32
 
         inTx = []
         for _ in range(Lin):
-            idx, posx = unpack("32sI", data[:32+4])
+            idx, posx = unpack("32sI", data[i:i+32+4])
             inTx += [InputTx(idx, posx)]
-            data = data[32+4:]
+            i += 32+4
 
         outTx = []
         for _ in range(Lout):
-            kidx, valx = unpack("32sQ", data[:32+8])
+            kidx, valx = unpack("32sQ", data[i:i+32+8])
             outTx += [OutputTx(kidx, valx)]
-            data = data[32+8:]
+            i += 32+8
 
-        return Tx(inTx, outTx)
+        tx = Tx(inTx, outTx, R=R)
+        
+        tx.ser = idata
+        return tx
 
     def id(self):
         """ Return the fingerprint of the tranaction """
@@ -216,3 +239,4 @@ class Tx:
         all_good &= (val == total_value)
 
         return all_good
+

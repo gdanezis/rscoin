@@ -19,12 +19,12 @@ def test_test():
 
 def test_Tx():
     # Empty string
-    x = Tx([], [])
+    x = Tx([], [], R="A"*32)
     assert hexlify(x.serialize())[:8] == "0" * 8
 
-    y = Tx([InputTx(urandom(32), 0)], [OutputTx(urandom(32), 100)])
+    y = Tx([InputTx(urandom(32), 0)], [OutputTx(urandom(32), 100)], R="B"*32)
     ser = y.serialize()
-    assert len(ser) == 4 + 32 + 4 + 32 + 8
+    assert len(ser) == 4 + 32 + 4 + 32 + 8 + 32
     z = Tx.parse(ser)
     assert y == z
     assert hexlify(y.serialize())[:8] == "01000100"
@@ -69,7 +69,7 @@ def test_utxo_check_issuing():
 
     tx3 = Tx([], [OutputTx(k1.id(), 250)])
 
-    assert tx3.check_transaction_utxo([], [pubIssue], 
+    assert tx3.check_transaction_utxo([], [ pubIssue ], 
                             [kIssue.sign(tx3.id())], masterkey = pubIssue)
 
 
