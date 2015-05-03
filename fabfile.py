@@ -4,6 +4,7 @@ env.hosts = ['ubuntu@52.16.247.68']
 
 def gitpull():
     with cd('/home/ubuntu/projects/rscoin/src'):
+        run('git commit -m "merge" -a')
         run('git pull')
 
 def host_type():
