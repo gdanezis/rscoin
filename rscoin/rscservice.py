@@ -56,6 +56,15 @@ def unpackage_query_response(response):
 
     return resp
 
+def package_commit(core, ks_list):
+    ks_flat = []
+    for (k, s) in ks_list:
+        ks_flat += [ k, s ]
+
+    data = " ".join(["Commit", str(len(core))] + core + map(b64encode, ks_flat))
+    return data
+
+
 
 
 class RSCProtocol(LineReceiver):
@@ -280,6 +289,15 @@ class RSCFactory(protocol.Factory):
     def process_TxCommit(self, data):
         """ Provides a Tx and a list of responses, and commits the transaction. """
         H, mainTx, otherTx, keys, sigs, auth_pub, auth_sig = data
+
+        # Check that this Tx is handled by this server
+        ik = mainTx.id()
+        lst = self.get_authorities(ik)
+        should_handle = (self.key.id() in lst)
+
+        if not should_handle:
+            log.msg('Failed Tx ID range ownership')
+            return False
         
         # First check all signatures
         all_good = True

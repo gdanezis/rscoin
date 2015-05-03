@@ -14,7 +14,7 @@ from twisted.test.proto_helpers import StringTransport
 
 import rscoin
 from rscoin.rscservice import RSCFactory, load_setup, get_authorities
-from rscoin.rscservice import package_query, unpackage_query_response
+from rscoin.rscservice import package_query, unpackage_query_response, package_commit
 
 
 import pytest
@@ -162,7 +162,7 @@ def test_TxCommit_Issued(sometx):
     tx3 = rscoin.Tx([], [rscoin.OutputTx(k1.id(), 250)])
 
     sig1 = kIssue.sign(tx3.id())
-    assert tx3.check_transaction_utxo([], [pubIssue], [sig1])
+    assert tx3.check_transaction_utxo([], [pubIssue], [sig1], kIssue.id())
 
     assert tx3.check_transaction([], [pubIssue], [sig1], kIssue.id())
 
@@ -390,19 +390,21 @@ def test_full_client(msg_mass):
         k, s = map(b64decode, resp[1:])
         assert resp[0] == "OK"
         tr.clear()
-        data = " ".join(["Commit", str(len(core))] + core + map(b64encode, [k, s]))
+        data = package_commit(core, [(k, s)])
+        # data = " ".join(["Commit", str(len(core))] + core + map(b64encode, [k, s]))
         instance.lineReceived(data)
         flag, pub, sig = tr.value().split(" ")
         assert flag == "OK"
     t1 = timer()
     print "\nCommit message rate: %2.2f / sec" % (1.0 / ((t1-t0)/(len(responses))))
+        
+
 
 @pytest.mark.online
 def test_commit_error(sometx):
     (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
 
     instance.lineReceived("Commit X Y Z")
-
 
 
 @pytest.mark.online
