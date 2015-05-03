@@ -50,7 +50,7 @@ def test_factory():
     directory = [(public, "127.0.0.1", 8080)]
 
     factory = RSCFactory(secret, directory, None)
-    assert os.path.exists(factory.dbname)
+    assert os.path.exists(factory.dbname + ".db") or os.path.exists(factory.dbname)
 
 def test_authorities():
     chars = ["A", "B", "C", "D", "E", "F"]

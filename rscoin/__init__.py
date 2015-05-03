@@ -9,7 +9,12 @@ from petlib.ecdsa import do_ecdsa_sign, do_ecdsa_verify
 
 from os import urandom
 
-_globalECG = EcGroup()
+# 415 PASS    4869.3/s    X9.62/SECG curve over a 256 bit prime field
+# 713 PASS    8499.8/s    NIST/SECG curve over a 224 bit prime field
+# 716 PASS    1348.2/s    NIST/SECG curve over a 521 bit prime field
+
+
+_globalECG = EcGroup(713)
 
 class Key:
     """ Represents a key pair (or just a public key)"""
