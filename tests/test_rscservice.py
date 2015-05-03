@@ -162,7 +162,9 @@ def test_TxCommit_Issued(sometx):
     tx3 = rscoin.Tx([], [rscoin.OutputTx(k1.id(), 250)])
 
     sig1 = kIssue.sign(tx3.id())
-    assert tx3.check_transaction_utxo([], [pubIssue], [sig1], kIssue.id())
+    assert tx3.check_transaction_utxo([], [pubIssue], [sig1])
+
+    assert tx3.check_transaction([], [pubIssue], [sig1], kIssue.id())
 
     ## Now we test the Commit
     data1 = map(b64encode, [tx3.serialize(), pubIssue, sig1])

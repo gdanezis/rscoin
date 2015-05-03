@@ -13,6 +13,6 @@ dir_data = file("directory.conf").read()
 directory = load_setup(dir_data) # [(public.id(), "127.0.0.1", 8080)]
 
 application = service.Application("rscoin")
-echoService = internet.TCPServer(8080, RSCFactory(secret, directory, public))
+echoService = internet.TCPServer(8080, RSCFactory(secret, directory["directory"], directory["special"]))
 echoService.setServiceParent(application)
 
