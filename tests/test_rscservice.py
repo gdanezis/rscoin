@@ -309,10 +309,9 @@ def test_multiple():
             total += 1
             xset += [ f.key.id() ]
             rss += [(r,s)]
-            #assert f.key.id() in auxes
         else:
             pass
-            #assert f.key.id() not in auxes
+            
     assert 5 <= total <= 10
     assert set(auxes) == set(xset)
 
