@@ -15,6 +15,7 @@ from petlib.ec import EcPt
 
 from twisted.internet import protocol
 from twisted.protocols.basic import LineReceiver
+from twisted.python import log
 
 import rscoin
 
@@ -289,11 +290,13 @@ class RSCFactory(protocol.Factory):
             all_good &= key.verify(H, sig)
 
         if not all_good:
+            log.msg('Failed Tx Signatures')
             return False
 
         # Check the transaction is well formed
         all_good = mainTx.check_transaction(otherTx, keys, sigs, masterkey=self.special_key)
         if not all_good:
+            log.msg('Failed Tx Validity')
             return False
 
         pub_set = set(pub_set)
@@ -306,10 +309,15 @@ class RSCFactory(protocol.Factory):
             aut = set(self.get_authorities(itx))
             all_good &= (len(aut & pub_set) > len(aut) / 2) 
 
+        if not all_good:
+            log.msg('Failed Tx Authority Consensus')
+            return False
+
         # Now check we have not already spent the transaction
         all_good &= (mid not in self.log)
-            
+
         if not all_good:
+            log.msg('Failed Tx Doublespending')
             return False
 
         ## TODO: Log all information about the transaction
