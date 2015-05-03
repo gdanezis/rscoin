@@ -173,9 +173,10 @@ class Tx:
         if len(past_tx) == 0:
             all_good &= (len(past_tx) == len(self.inTx) == 0)
             all_good &= (len(keys) == len(sigs) == 1)
-            all_good &= (keys[0] == masterkey)
-
+            
             k = Key(keys[0])
+            all_good &= (k.id() == masterkey)
+
             all_good &= k.verify(self.id(), sigs[0])
             return all_good
 
@@ -195,7 +196,7 @@ class Tx:
             outtx = oTx.outTx[txin.pos]
             out_utxo += [(txin.tx_id, txin.pos, outtx.key_id, outtx.value)]
 
-        return self.check_transaction_utxo(out_utxo, keys, sigs, masterkey=None)
+        return self.check_transaction_utxo(out_utxo, keys, sigs, masterkey=masterkey)
 
 
 
@@ -208,9 +209,10 @@ class Tx:
         if len(past_utxo) == 0:
             all_good &= (len(past_utxo) == len(self.inTx) == 0)
             all_good &= (len(keys) == len(sigs) == 1)
-            all_good &= (keys[0] == masterkey)
-
+            
             k = Key(keys[0])
+            all_good &= (k.id() == masterkey)
+
             all_good &= k.verify(self.id(), sigs[0])
             return all_good
 

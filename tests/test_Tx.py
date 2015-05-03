@@ -70,7 +70,7 @@ def test_utxo_check_issuing():
     tx3 = Tx([], [OutputTx(k1.id(), 250)])
 
     assert tx3.check_transaction_utxo([], [ pubIssue ], 
-                            [kIssue.sign(tx3.id())], masterkey = pubIssue)
+                            [kIssue.sign(tx3.id())], masterkey = kIssue.id())
 
 
 def test_utxo_entries():

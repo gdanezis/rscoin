@@ -18,6 +18,16 @@ def stop():
         run('kill `cat twistd.pid`')
 
 def keys():
+    [_, host] = env.host_string.split("@")
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run('python derivekey.py --store')
+        result = run('python derivekey.py --store')
+        [_, key] = result.strip().split()
+        
+        import sys
+        sys.path += ["."]
+        import rscoin
+        from base64 import b64encode, b64decode
+
+        kid = b64encode(rscoin.Key(b64decode(key)).id())
+        print [kid, host, 8080]
     
