@@ -14,8 +14,11 @@ from twisted.test.proto_helpers import StringTransport
 
 import rscoin
 from rscoin.rscservice import RSCFactory, load_setup, get_authorities
+from rscoin.rscservice import package_query, unpackage_query_response
+
 
 import pytest
+
 
 @pytest.fixture
 def sometx():
@@ -97,34 +100,6 @@ def test_TxQuery(sometx):
 
     assert not factory.process_TxQuery(data2)
 
-
-def package_query(tx, tx_deps, keys):
-
-    items = [ tx.serialize() ]
-    for txi in tx_deps:
-        items += [ txi.serialize() ]
-
-    for k in keys:
-        items += [ k.export()[0] ]        
-
-    for k in keys:
-        items += [ k.sign(tx.id()) ]
-
-    dataCore = map(b64encode, items)    
-    
-    H = sha256(" ".join(dataCore)).digest()
-    data = " ".join(["Query", str(len(dataCore))] + dataCore)
-
-    return H, data, dataCore
-
-def unpackage_query_response(response):
-    resp = response.strip().split(" ")
-    
-    code = resp[0]
-    if code == "OK" or code == "Pong":
-        resp[1:] = map(b64decode, resp[1:])
-
-    return resp
 
 def test_TxQuery_serialize(sometx):
     (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
@@ -456,3 +431,19 @@ if __name__ == "__main__":
         profile.run("test_full_client(xxx)")
         profile.print_stats()
 
+@pytest.mark.online
+def test_online_ping(sometx):
+    (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
+
+    import socket
+
+    HOST = '52.16.247.68'    # The remote host
+    PORT = 8080              # The same port as used by the server
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((HOST, PORT))
+    s.sendall('Ping\r\n')
+    data = s.recv(5000)
+    s.close()
+    
+    assert unpackage_query_response(data)[0] == "Pong"
+    
