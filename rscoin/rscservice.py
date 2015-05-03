@@ -156,6 +156,7 @@ class RSCProtocol(LineReceiver):
 
         if not res:
             self.sendLine("NOTOK")
+            return
 
         h = mainTx.id()
         ret = self.sign(h)
