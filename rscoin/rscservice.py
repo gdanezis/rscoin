@@ -64,6 +64,15 @@ def package_commit(core, ks_list):
     data = " ".join(["Commit", str(len(core))] + core + map(b64encode, ks_flat))
     return data
 
+def unpackage_commit_response(response):
+    resp = response.strip().split(" ")
+    
+    code = resp[0]
+    if code == "OK" or code == "Pong":
+        resp[1:] = map(b64decode, resp[1:])
+
+    return resp
+
 
 
 
@@ -140,7 +149,6 @@ class RSCProtocol(LineReceiver):
         
         try:
             bundle_size = int(items[1])
-
 
             extras = items[2+bundle_size:] 
             items = items[2:2+bundle_size]

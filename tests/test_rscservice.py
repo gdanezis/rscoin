@@ -14,7 +14,8 @@ from twisted.test.proto_helpers import StringTransport
 
 import rscoin
 from rscoin.rscservice import RSCFactory, load_setup, get_authorities
-from rscoin.rscservice import package_query, unpackage_query_response, package_commit
+from rscoin.rscservice import package_query, unpackage_query_response, \
+                        package_commit, unpackage_commit_response
 
 
 import pytest
@@ -222,7 +223,7 @@ def test_multiple():
 
     # Make special keys for making coins
     secret_special = "KEYSPECIAL"
-    public_special = rscoin.Key(secret_special, public=False).pub.export()
+    public_special = rscoin.Key(secret_special, public=False).id()
     
     # Define a number of keys
     all_keys = []
@@ -287,20 +288,55 @@ def test_multiple():
         assert isinstance(aid, str) and len(aid) == 32
         assert aid in factories
 
+    H, msg, dataCore = package_query(tx3, [tx1, tx2], [k1, k2])
+
     xset = []
+    rss = []
     for kid, f in factories.iteritems():
-        resp = f.process_TxQuery(data)
-        # print(resp)
+        # resp = f.process_TxQuery(data)
+
+        instance = f.buildProtocol(None)
+        tr = StringTransport()
+        instance.makeConnection(tr)
+        instance.lineReceived(msg)
+
+        resp_msg = unpackage_query_response(tr.value().strip())
+
         assert kid == f.key.id()
-        if resp:
+        if resp_msg[0] == "OK":
+            [r, s] = resp_msg[1:]
+
             total += 1
             xset += [ f.key.id() ]
+            rss += [(r,s)]
             #assert f.key.id() in auxes
         else:
             pass
             #assert f.key.id() not in auxes
     assert 5 <= total <= 10
     assert set(auxes) == set(xset)
+
+    ## Now test the commit phase
+    assert 5 <= len(rss) <= 10 
+    msg_commit = package_commit(dataCore, rss)
+
+    #from twisted.python import log
+    #import sys
+    #log.startLogging(sys.stdout)
+
+    total = 0
+    for kid, f in factories.iteritems():
+    
+        instance = f.buildProtocol(None)
+        tr = StringTransport()
+        instance.makeConnection(tr)
+        instance.lineReceived(msg_commit)
+
+        resp_commit = tr.value().strip()
+        resp_l = unpackage_commit_response(resp_commit)
+        if resp_l[0] == "OK":
+            total += 1
+    assert total == 5
 
 @pytest.fixture
 def msg_mass():
@@ -454,8 +490,6 @@ def test_online_issue(sometx):
     kx = rscoin.Key(b64decode(pub))
     assert kx.verify(tx3.id(), b64decode(sig))
 
-
-
     import socket
     HOST = '52.16.247.68'    # The remote host
     PORT = 8080              # The same port as used by the server
@@ -466,8 +500,7 @@ def test_online_issue(sometx):
     data_rec = ''
     data_rec += s.recv(4096)
     print "Data: '%s'" % data_rec
-    s.close()
-    
+    s.close()    
 
     # Ensure the returned signatures check
     ret, pub, sig = data_rec.split(" ")
