@@ -120,6 +120,7 @@ class RSCProtocol(LineReceiver):
         # If Query failed
         if not res:
             self.sendLine("NOTOK" )
+            return
 
         self.sendLine("OK %s" % self.sign(H))
         return

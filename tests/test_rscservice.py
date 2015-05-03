@@ -427,6 +427,8 @@ def test_online_issue(sometx):
     
     kIssue = rscoin.Key(file("secret.key").read(), False) # rscoin.Key(urandom(32), public=False)
     pubIssue = kIssue.pub.export()
+    factory.special_key = kIssue.id()
+    print "Public ID: %s" % b64encode(factory.special_key)
     
     # Build a new coin
     k1 = rscoin.Key(urandom(32), public=False)
@@ -438,6 +440,18 @@ def test_online_issue(sometx):
     data1 = map(b64encode, [tx3.serialize(), pubIssue, sig1])
     data = " ".join(["Commit", str(len(data1))] + data1)
 
+    # test on fake
+    tr.clear()
+    instance.lineReceived(data)
+
+    # Ensure the returned signatures check
+    ret, pub, sig = tr.value().split(" ")
+    assert ret == "OK"
+    kx = rscoin.Key(b64decode(pub))
+    assert kx.verify(tx3.id(), b64decode(sig))
+
+
+
     import socket
     HOST = '52.16.247.68'    # The remote host
     PORT = 8080              # The same port as used by the server
@@ -446,9 +460,8 @@ def test_online_issue(sometx):
     s.sendall(data + '\r\n')
 
     data_rec = ''
-    while "\r\n" not in data_rec:
-        data_rec += s.recv(4096)
-        print "Data: '%s'" % data_rec
+    data_rec += s.recv(4096)
+    print "Data: '%s'" % data_rec
     s.close()
     
 
