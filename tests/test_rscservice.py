@@ -20,6 +20,8 @@ from rscoin.rscservice import package_query, unpackage_query_response, \
 
 import pytest
 
+master_ip = "52.17.228.102"
+
 
 @pytest.fixture
 def sometx():
@@ -448,7 +450,10 @@ def test_online_ping(sometx):
 
     import socket
 
-    HOST = '52.16.247.68'    # The remote host
+    ## Read live directory
+
+
+    HOST = master_ip    # The remote host
     PORT = 8080              # The same port as used by the server
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((HOST, PORT))
@@ -489,8 +494,18 @@ def test_online_issue(sometx):
     kx = rscoin.Key(b64decode(pub))
     assert kx.verify(tx3.id(), b64decode(sig))
 
+    # Second time:
+    tr.clear()
+    instance.lineReceived(data)
+    ret2, pub2, sig2 = tr.value().split(" ")
+    assert ret2 == ret
+    assert pub2 == pub
+    assert sig != sig2
+    assert kx.verify(tx3.id(), b64decode(sig2))
+
+
     import socket
-    HOST = '52.16.247.68'    # The remote host
+    HOST = master_ip    # The remote host
     PORT = 8080              # The same port as used by the server
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((HOST, PORT))
