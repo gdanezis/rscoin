@@ -1,26 +1,26 @@
-from fabric.api import run, env, cd, put, execute, require
+from fabric.api import run, env, cd, put, execute, require, sudo
 from fabric.decorators import runs_once
 
 
-import sys
-sys.path += ["."]
-
-import rscoin
 from base64 import b64encode, b64decode
+import rscoin
+
+import sys
+sys.path += [ "." ]
 
 
 env.hosts = ['ubuntu@52.17.186.0', 
              'ubuntu@52.17.179.62',
              'ubuntu@52.17.183.156',
              'ubuntu@52.17.55.88',
-             'ubuntu@52.17.186.209',]
+             'ubuntu@52.17.186.209' ]
 
-from fabric.network import prompt_for_password
 
 def gitpull():
     with cd('/home/ubuntu/projects/rscoin/src'):
         # run('git commit -m "merge" -a')
-        run('echo %s | git pull' % env["git_pass"])
+        sudo('pip install petlib --upgrade')
+        run('git pull')
 
 def host_type():
     run('uname -s')
