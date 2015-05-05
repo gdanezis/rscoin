@@ -263,7 +263,7 @@ class RSCFactory(protocol.Factory):
             if self.key.id() in lst:
                 should_handle_ik += [ ik ]
 
-        if len(should_handle_ik) > 0:
+        if should_handle_ik == []:
             #print("Not in ID range.")
             return False
 
