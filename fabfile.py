@@ -8,13 +8,23 @@ import rscoin
 import sys
 sys.path += [ "." ]
 
+import re
+aws_str = """
+    i-54c1f1b2: ec2-52-17-100-153.eu-west-1.compute.amazonaws.com
+    i-55c1f1b3: ec2-52-17-47-246.eu-west-1.compute.amazonaws.com
+    i-56c1f1b0: ec2-52-17-191-196.eu-west-1.compute.amazonaws.com
+    i-57c1f1b1: ec2-52-17-98-120.eu-west-1.compute.amazonaws.com
+    i-dac4f43c: ec2-52-17-36-157.eu-west-1.compute.amazonaws.com
+"""
 
-env.hosts = ['ubuntu@52.17.70.224', 
-             'ubuntu@54.72.129.101',
-             'ubuntu@54.72.125.120',
-             'ubuntu@52.17.225.8',
-             'ubuntu@54.72.103.207' ]
+ulrs = re.findall("ec2-.*.compute.amazonaws.com", aws_str)
 
+
+env.hosts = [('ubuntu@' + u) for u in ulrs ]
+
+
+def null():
+    pass
 
 def gitpull():
     with cd('/home/ubuntu/projects/rscoin/src'):
@@ -65,8 +75,26 @@ def loaddir():
 
 def passcache():
     with cd('/home/ubuntu/projects/rscoin/src'):
+        sudo("apt-get install collectl")
+        # sudo("/etc/init.d/collectl start -D")
         run("git config credential.helper store")
         run("git pull")
+
+def runcollect():
+    with cd('/home/ubuntu/projects/rscoin/src'):
+        run("collectl -f LOGFILE -D")
+        num = run("ps -A | grep collect")
+        print re.findall("[0-9]+", num)[0]
+        run("kill %s" % num)
+
+#    sudo("/etc/init.d/collectl start -D")
+
+#def collect():
+#    with cd('/home/ubuntu/projects/rscoin/src'):
+#        run("ls /var/log/collectl/")
+#        fname = run("ls /var/log/collectl/*.raw.gz")
+#        # run("cat %s" % fname)
+#        run("collectl -p %s -s cn" % fname)
 
 @runs_once
 def deploy():
@@ -76,7 +104,7 @@ def deploy():
 
 @runs_once
 def experiment1():
-    local("python simscript.py 5000 payments.txt")
+    local("python simscript.py 1000 payments.txt")
     local("rm -rf experiment1")
     local("mkdir experiment1")
     local("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")
