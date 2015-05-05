@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from rscoin.rscservice import RSCFactory, load_setup, unpackage_commit_response, get_authorities, \
+from rscoin.rscservice import RSCProtocol, RSCFactory, load_setup, unpackage_commit_response, get_authorities, \
                     package_query, unpackage_query_response, package_commit, unpackage_commit_response
 
 import rscoin
@@ -82,11 +82,14 @@ class ActiveTx():
     def get_value(self, value):
         v = 0
         tx = []
-        for (tx_id, i, key_id, value) in self.Tx:
-            v += value
-            tx += [ (tx_id, i, key_id, value) ]
+        for k in self.Tx:
+            (tx_id, i, key_id, cv) = k
+            v += cv
+            tx += [ k ]
             if v >= value:
                 break
+
+        # print v, tx
         return v, tx
 
 def broadcast(small_dir, data):
@@ -110,7 +113,7 @@ def broadcast(small_dir, data):
     return d
 
 def r_stop(results):
-    if results is not None:
+    if results is not None and isinstance(results, Exception):
         print "Error", results
     reactor.stop()
 
@@ -120,16 +123,28 @@ def play(core, directory):
 
     t0 = default_timer()
 
+    inTxo = tx.get_utxo_in_keys()
+    # Check that at least one Input is handled by this server
+    Qauths = []
+    for ik in inTxo:
+        Qauths += get_authorities(directory, ik)
+    Qauths = set(Qauths)
+    Qsmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Qauths]
+    print len(Qsmall_dir)
+
     Cauths = set(get_authorities(directory, tx.id()))
     Csmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Cauths]
+    assert len(Csmall_dir) == 3
 
     d_end = defer.Deferred()
 
     def get_commit_responses(resp):
         try:
+            assert len(resp) == 3
             for r in resp:
                 res = unpackage_commit_response(r)
                 if res[0] != "OK":
+                    print resp
                     d_end.errback(Exception("Commit failed."))
                     return
             t1 = default_timer()
@@ -151,14 +166,6 @@ def play(core, directory):
     else:
         q_msg = " ".join(["Query", str(len(core))] + core)
 
-        inTxo = tx.get_utxo_in_keys()
-        # Check that at least one Input is handled by this server
-        Qauths = []
-        for ik in inTxo:
-            Qauths += get_authorities(directory, ik)
-        Qauths = set(Qauths)
-        Qsmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Qauths]
-
         d = broadcast(Qsmall_dir, q_msg)
 
         def process_query_response(resp):
@@ -167,24 +174,22 @@ def play(core, directory):
                 for r in resp:
                     res = unpackage_query_response(r)
                     if res[0] != "OK":
-                        print res
+                        print resp
                         d_end.errback(Exception("Query failed."))
                         return
                     _, k, s = res
                     kss += [(k, s)]
-                # print "Queries OK"
+
 
                 commit_message = package_commit(core, kss)
 
                 d = broadcast(Csmall_dir, commit_message)
                 d.addCallback(get_commit_responses)
-                # d.addErrback(d_end.errback)
 
             except Exception as e:
                 d_end.errback(e)
 
         d.addCallback(process_query_response)
-        # d.addErrback(d_end.errback)
 
     return d_end
 
@@ -278,9 +283,10 @@ if __name__ == "__main__":
         reactor.run()
 
     elif args.pay:
+
         (val, dest_addr, change_addr) = args.pay
         val = int(val)
-        assert 0 < val 
+        assert isinstance(val, int) and 0 < val 
 
         keys = load_keys()
         dest_addr = b64decode(keys["#"+dest_addr][2])
@@ -288,7 +294,8 @@ if __name__ == "__main__":
 
         active = ActiveTx("activetx.log", keys)
         
-        xval, txs = active.get_value(val)
+        print val
+        xval, txs = active.get_value(int(val))
         assert len(txs) > 0
 
         if val <= xval:
@@ -319,50 +326,54 @@ if __name__ == "__main__":
             sechash, query_string, core = package_query(newtx, inTx_list, keys_list)
             print " ".join(core)
 
-            inTxo = newtx.get_utxo_in_keys()
+            d = play(core, directory)
+            d.addBoth(r_stop)
 
-            # Check that at least one Input is handled by this server
-            auths = []
-            for ik in inTxo:
-                auths += get_authorities(directory, ik)
-            auths = set(auths)
-            small_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in auths]
+            # inTxo = newtx.get_utxo_in_keys()
 
-            ## Send the Query 
-            d = broadcast(small_dir, query_string)
+            # # Check that at least one Input is handled by this server
+            # auths = []
+            # for ik in inTxo:
+            #     auths += get_authorities(directory, ik)
+            # auths = set(auths)
+            # small_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in auths]
 
-            def get_commit_responses(resp):
-                for r in resp:
-                    res = unpackage_commit_response(r)
-                    if res[0] != "OK":
-                        raise Exception("Commit failed.")
-                print "Commit OK"
+            # ## Send the Query 
+            # d = broadcast(small_dir, query_string)
 
-
-            def get_query_responses(resp):
-                kss = []
-                for r in resp:
-                    res = unpackage_query_response(r)
-                    if res[0] != "OK":
-                        raise Exception("Query failed.")
-
-                    _, k, s = res
-                    kss += [(k, s)]
-                print "Queries OK"
-
-                auths = set(get_authorities(directory, newtx.id()))
-                small_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in auths]
-
-                commit_message = package_commit(core, kss)
-
-                d = broadcast(small_dir, commit_message)
-                d.addCallback(get_commit_responses)
-                d.addBoth(r_stop)
+            # def get_commit_responses(resp):
+            #     for r in resp:
+            #         res = unpackage_commit_response(r)
+            #         if res[0] != "OK":
+            #             raise Exception("Commit failed.")
+            #     print "Commit OK"
 
 
+            # def get_query_responses(resp):
+            #     kss = []
+            #     for r in resp:
+            #         res = unpackage_query_response(r)
+            #         if res[0] != "OK":
+            #             raise Exception("Query failed.")
 
-            d.addCallback(get_query_responses)
-            d.addErrback(r_stop)
+            #         _, k, s = res
+            #         kss += [(k, s)]
+            #     print "Queries OK"
+
+            #     auths = set(get_authorities(directory, newtx.id()))
+            #     small_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in auths]
+
+            #     commit_message = package_commit(core, kss)
+
+            #     d = broadcast(small_dir, commit_message)
+            #     d.addCallback(get_commit_responses)
+            #     d.addBoth(r_stop)
+
+
+
+            # d.addCallback(get_query_responses)
+            # d.addErrback(r_stop)
+            
             reactor.run()
 
 

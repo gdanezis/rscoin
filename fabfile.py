@@ -29,6 +29,11 @@ def start():
     with cd('/home/ubuntu/projects/rscoin/src'):
         run('twistd -y rscserver.tac.py')
 
+def clean():
+    with cd('/home/ubuntu/projects/rscoin/src'):
+        run('rm log-*')
+        run('rm keys-*')
+
 def stop():
     with cd('/home/ubuntu/projects/rscoin/src'):
         run('kill `cat twistd.pid`')

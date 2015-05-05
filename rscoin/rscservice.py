@@ -81,7 +81,8 @@ class RSCProtocol(LineReceiver):
     def __init__(self, factory):
         self.factory = factory
 
-    def parse_Tx_bundle(self , bundle_items, items):
+    @staticmethod
+    def parse_Tx_bundle(bundle_items, items):
         """ Common parsing code for the Tx bundle """
 
         assert len(items) == bundle_items
@@ -114,7 +115,7 @@ class RSCProtocol(LineReceiver):
 
         try:
             items = items[2:2+bundle_size]
-            H, data = self.parse_Tx_bundle( bundle_size, items)
+            H, data = RSCProtocol.parse_Tx_bundle( bundle_size, items)
             (mainTx, otherTx, keys, sigs) = data
 
             # Specific checks
@@ -152,7 +153,7 @@ class RSCProtocol(LineReceiver):
 
             extras = items[2+bundle_size:] 
             items = items[2:2+bundle_size]
-            H, data = self.parse_Tx_bundle( bundle_size, items)
+            H, data = RSCProtocol.parse_Tx_bundle( bundle_size, items)
             (mainTx, otherTx, keys, sigs) = data
 
             # Specific checks
@@ -256,12 +257,13 @@ class RSCFactory(protocol.Factory):
         inTxo = mainTx.get_utxo_in_keys()
 
         # Check that at least one Input is handled by this server
-        should_handle = False
+        should_handle_ik = []
         for ik in inTxo:
             lst = self.get_authorities(ik)
-            should_handle |= (self.key.id() in lst)
+            if self.key.id() in lst:
+                should_handle_ik += [ ik ]
 
-        if not should_handle:
+        if len(should_handle_ik) > 0:
             #print("Not in ID range.")
             return False
 
@@ -272,7 +274,7 @@ class RSCFactory(protocol.Factory):
             return False
 
         ## Check all inputs are in
-        for ik in inTxo:
+        for ik in should_handle_ik:
             ## We are OK if this is already in the log with the same mid
             if ik in self.log and self.log[ik] == mid:
                 continue
@@ -284,7 +286,7 @@ class RSCFactory(protocol.Factory):
 
         # Once we know all is good we proceed to remove them
         # but write the decision to a log
-        for ik in inTxo:
+        for ik in should_handle_ik:
             if ik in self.db:
                 del self.db[ik]
             self.log[ik] = mid
