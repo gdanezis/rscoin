@@ -1,4 +1,4 @@
-from fabric.api import run, env, cd, put, execute, require, sudo
+from fabric.api import run, env, cd, put, execute, require, sudo, local
 from fabric.decorators import runs_once
 
 
@@ -73,3 +73,13 @@ def deploy():
     execute(gitpull)
     execute(keys)
     execute(loaddir)
+
+@runs_once
+def experiment1():
+    local("python simscript.py 1000 payments.txt")
+    local("rm -rf experiment1")
+    local("mkdir experiment1")
+    local("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")
+    local("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
+    local("./rsc.py --play payments.txt-r2 > experiment1/r2-times.txt")
+

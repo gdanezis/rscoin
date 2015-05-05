@@ -20,6 +20,7 @@ class RSCconnection(LineReceiver):
 
     def lineReceived(self, line):
         self.factory.add_to_buffer(line)
+        self.transport.loseConnection()
 
 class RSCfactory(Factory):
     def __init__(self):
@@ -33,10 +34,10 @@ class RSCfactory(Factory):
         return RSCconnection(self)
 
     def clientConnectionLost(self, connector, reason):
-        self.add_to_buffer(None)
+        pass # self.add_to_buffer(None)
 
     def clientConnectionFailed(self, connector, reason):
-        self.add_to_buffer(None)
+        pass # self.add_to_buffer(None)
 
 def load_keys():
     keys = {}
@@ -130,7 +131,7 @@ def play(core, directory):
         Qauths += get_authorities(directory, ik)
     Qauths = set(Qauths)
     Qsmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Qauths]
-    print len(Qsmall_dir)
+    # print len(Qsmall_dir)
 
     Cauths = set(get_authorities(directory, tx.id()))
     Csmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Cauths]
@@ -257,7 +258,7 @@ if __name__ == "__main__":
 
     elif args.play:
 
-        threads = [ None ] * 20
+        threads = [ None ] * 10
         cores = []
 
         for core in file(args.play[0]):
@@ -280,7 +281,10 @@ if __name__ == "__main__":
         for _ in threads:
             play_another_song(None)
 
+        t0 = default_timer()
         reactor.run()
+        t1 = default_timer()
+        print "Overall time: %s" % (t1 - t0)
 
     elif args.pay:
 
@@ -328,54 +332,8 @@ if __name__ == "__main__":
 
             d = play(core, directory)
             d.addBoth(r_stop)
-
-            # inTxo = newtx.get_utxo_in_keys()
-
-            # # Check that at least one Input is handled by this server
-            # auths = []
-            # for ik in inTxo:
-            #     auths += get_authorities(directory, ik)
-            # auths = set(auths)
-            # small_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in auths]
-
-            # ## Send the Query 
-            # d = broadcast(small_dir, query_string)
-
-            # def get_commit_responses(resp):
-            #     for r in resp:
-            #         res = unpackage_commit_response(r)
-            #         if res[0] != "OK":
-            #             raise Exception("Commit failed.")
-            #     print "Commit OK"
-
-
-            # def get_query_responses(resp):
-            #     kss = []
-            #     for r in resp:
-            #         res = unpackage_query_response(r)
-            #         if res[0] != "OK":
-            #             raise Exception("Query failed.")
-
-            #         _, k, s = res
-            #         kss += [(k, s)]
-            #     print "Queries OK"
-
-            #     auths = set(get_authorities(directory, newtx.id()))
-            #     small_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in auths]
-
-            #     commit_message = package_commit(core, kss)
-
-            #     d = broadcast(small_dir, commit_message)
-            #     d.addCallback(get_commit_responses)
-            #     d.addBoth(r_stop)
-
-
-
-            # d.addCallback(get_query_responses)
-            # d.addErrback(r_stop)
             
             reactor.run()
-
 
         else:
             print "Insufficient balance: %s ( < %s)" % (val, xval)
