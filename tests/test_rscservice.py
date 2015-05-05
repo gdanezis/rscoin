@@ -63,7 +63,7 @@ def test_authorities():
     directory = [(c* 32, "127.0.0.1", 8080) for c in chars]
 
     secret = "X"*32
-    factory = RSCFactory(secret, directory, None)
+    factory = RSCFactory(secret, directory, None, N=5)
 
     assert factory.get_authorities("AXX")[-1][0] == "E"
     assert factory.get_authorities("FXX")[-1][0] == "D"
@@ -242,7 +242,7 @@ def test_multiple():
     # Build the factories
     factories = {}
     for pub, sec in all_keys:
-        factory = RSCFactory(sec, directory, public_special, conf_dir="scratch")
+        factory = RSCFactory(sec, directory, public_special, conf_dir="scratch", N=5)
         factories[pub] = factory
 
     # Make a mass of transactions
@@ -280,8 +280,8 @@ def test_multiple():
     total = 0
 
     [ kid1, kid2 ] = tx3.get_utxo_in_keys()
-    au1 = get_authorities(directory, kid1)
-    au2 = get_authorities(directory, kid2)
+    au1 = get_authorities(directory, kid1, N = 5)
+    au2 = get_authorities(directory, kid2, N = 5)
     
     auxes = set(au1 + au2)
 

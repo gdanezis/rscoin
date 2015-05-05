@@ -214,12 +214,13 @@ class RSCFactory(protocol.Factory):
 
     _sync = False
 
-    def __init__(self, secret, directory, special_key, conf_dir=None):
+    def __init__(self, secret, directory, special_key, conf_dir=None, N=3):
         """ Initialize the RSCoin server"""
         self.special_key = special_key
         self.key = rscoin.Key(secret, public=False)
         self.directory = sorted(directory)
         keyID = self.key.id()[:10]
+        self.N = N
 
         # Open the databases
         self.dbname = 'keys-%s' % hexlify(keyID)
@@ -358,12 +359,12 @@ class RSCFactory(protocol.Factory):
         return all_good
 
 
-    def get_authorities(self, xID, N = 5):
+    def get_authorities(self, xID):
         """ Returns the keys of the authorities for a certain xID """
-        return get_authorities(self.directory, xID, N)
+        return get_authorities(self.directory, xID, self.N)
 
 
-def get_authorities(directory, xID, N = 5):
+def get_authorities(directory, xID, N = 3):
     """ Returns the keys of the authorities for a certain xID """
     d = sorted(directory)
     

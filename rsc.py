@@ -6,6 +6,7 @@ import rscoin
 from base64 import b64encode, b64decode
 import argparse
 from os import urandom
+from timeit import default_timer
 
 from twisted.internet import reactor, defer
 from twisted.internet.protocol import Factory, Protocol
@@ -113,6 +114,80 @@ def r_stop(results):
         print "Error", results
     reactor.stop()
 
+def play(core, directory):
+
+    tx = rscoin.Tx.parse(b64decode(core[0]))
+
+    t0 = default_timer()
+
+    Cauths = set(get_authorities(directory, tx.id()))
+    Csmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Cauths]
+
+    d_end = defer.Deferred()
+
+    def get_commit_responses(resp):
+        try:
+            for r in resp:
+                res = unpackage_commit_response(r)
+                if res[0] != "OK":
+                    d_end.errback(Exception("Commit failed."))
+                    return
+            t1 = default_timer()
+            # print 
+            print "Commit OK", t1 - t0
+            d_end.callback(t1 - t0)
+        except Exception as e:
+            d_end.errback(e)
+            return
+
+    if len(tx.inTx) == 0:
+        # We are dealing with an issue message
+        c_msg = " ".join(["Commit", str(len(core))] + core)
+
+        d = broadcast(Csmall_dir, c_msg)
+        d.addCallback(get_commit_responses)
+        # d.addErrback(d_end.errback)
+
+    else:
+        q_msg = " ".join(["Query", str(len(core))] + core)
+
+        inTxo = tx.get_utxo_in_keys()
+        # Check that at least one Input is handled by this server
+        Qauths = []
+        for ik in inTxo:
+            Qauths += get_authorities(directory, ik)
+        Qauths = set(Qauths)
+        Qsmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Qauths]
+
+        d = broadcast(Qsmall_dir, q_msg)
+
+        def process_query_response(resp):
+            try:
+                kss = []
+                for r in resp:
+                    res = unpackage_query_response(r)
+                    if res[0] != "OK":
+                        print res
+                        d_end.errback(Exception("Query failed."))
+                        return
+                    _, k, s = res
+                    kss += [(k, s)]
+                # print "Queries OK"
+
+                commit_message = package_commit(core, kss)
+
+                d = broadcast(Csmall_dir, commit_message)
+                d.addCallback(get_commit_responses)
+                # d.addErrback(d_end.errback)
+
+            except Exception as e:
+                d_end.errback(e)
+
+        d.addCallback(process_query_response)
+        # d.addErrback(d_end.errback)
+
+    return d_end
+
 
 if __name__ == "__main__":
     
@@ -133,6 +208,9 @@ if __name__ == "__main__":
     parser.add_argument('--newaddress', nargs=1, metavar="NAME", help='Make a new address with a specific name.')
     parser.add_argument('--storeaddress', nargs=2, metavar=("NAME", "KEYID"), help='Load an address ID with a specific name.')
     parser.add_argument('--listaddress',action='store_true', help='List all known addresses.')
+
+    parser.add_argument('--play', nargs=1, metavar="FILE", help='Play a set of transaction cores.')
+
 
     
     args = parser.parse_args()
@@ -171,6 +249,33 @@ if __name__ == "__main__":
         data = "#%s pub %s" % (args.storeaddress[0], args.storeaddress[1])
         f.write(data+"\n")
         f.close()
+
+    elif args.play:
+
+        threads = [ None ] * 20
+        cores = []
+
+        for core in file(args.play[0]):
+            c = core.strip().split()
+            cores += [ c ]
+
+        def play_another_song(var):
+            # if var:
+            #    print var
+
+            if cores != []:
+                c = cores.pop()
+                d = play(c, directory)
+                d.addBoth(play_another_song)
+            else:
+                threads.pop()
+                if threads == []:
+                    reactor.stop()
+        
+        for _ in threads:
+            play_another_song(None)
+
+        reactor.run()
 
     elif args.pay:
         (val, dest_addr, change_addr) = args.pay

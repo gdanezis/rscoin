@@ -9,11 +9,11 @@ import sys
 sys.path += [ "." ]
 
 
-env.hosts = ['ubuntu@52.17.225.22', 
-             'ubuntu@52.17.225.215',
-             'ubuntu@52.17.228.102',
-             'ubuntu@52.17.163.152',
-             'ubuntu@52.17.168.64' ]
+env.hosts = ['ubuntu@52.17.70.224', 
+             'ubuntu@54.72.129.101',
+             'ubuntu@54.72.125.120',
+             'ubuntu@52.17.225.8',
+             'ubuntu@54.72.103.207' ]
 
 
 def gitpull():
