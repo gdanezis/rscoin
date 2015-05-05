@@ -16,9 +16,8 @@ issueT = np.array(map(float, re.findall("\d+[.]\d+", d1)))
 r1T = map(float, re.findall("\d+[.]\d+", file(join(directory, "r1-times.txt")).read()))
 r2T = map(float, re.findall("\d+[.]\d+", file(join(directory, "r2-times.txt")).read()))
 
-print issueT
 
-bins = np.arange(0,1, 0.05)
+bins = np.arange(0,2, 0.075)
 # the histogram of the data
 n, bins, patches = plt.hist((issueT, r1T, r2T), bins, normed=1, alpha=0.75, label=["Issuing","Pay (Original)","Pay (Normal)"])
 
@@ -27,19 +26,13 @@ n, bins, patches = plt.hist((issueT, r1T, r2T), bins, normed=1, alpha=0.75, labe
 [p.set_hatch("x") for p in patches[2].patches]
 
 
-#patches[1].set_hatch("\\")
-#patches[2].set_hatch("x")
-
-#n, bins, patches2 = plt.hist(r1T, bins, normed=1, alpha=0.75, label="Pay (Original)")
-#n, bins, patches3 = plt.hist(r2T, bins, normed=1, alpha=0.75, label="Pay (Normal)")
-
-
-plt.xlabel('RSCoin Latency (sec)')
+plt.xlabel('Latency (sec)')
 plt.ylabel('Probability density')
-plt.title(r'Distribution of Issue & Pay Latency')
-plt.axis([0, 1, 0, 10])
+plt.title(r'RSCoin Issue & Pay Protocol Latency')
+plt.axis([0, 1.5, 0, 8])
 plt.grid(True)
 
 first_legend = plt.legend(loc=1)
 
-plt.show()
+plt.savefig(join(directory, "latency.pdf"))
+plt.close()

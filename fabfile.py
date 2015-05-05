@@ -76,10 +76,12 @@ def deploy():
 
 @runs_once
 def experiment1():
-    local("python simscript.py 1000 payments.txt")
+    local("python simscript.py 5000 payments.txt")
     local("rm -rf experiment1")
     local("mkdir experiment1")
     local("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")
     local("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
     local("./rsc.py --play payments.txt-r2 > experiment1/r2-times.txt")
+    local("python exp1plot.py experiment1")
+
 
