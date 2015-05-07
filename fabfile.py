@@ -1,4 +1,4 @@
-from fabric.api import run, env, cd, put, get, execute, require, sudo, local
+from fabric.api import run, env, cd, put, get, execute, require, sudo, local, lcd, settings
 from fabric.decorators import runs_once, roles, parallel
 
 
@@ -42,16 +42,37 @@ clients = parse_machines("""
     i-def0f339: ec2-54-72-194-75.eu-west-1.compute.amazonaws.com
 """)
 
+
+def dyn_server_role():
+    if "slimit" not in env:
+        return servers
+    else:
+        return servers[:env.slimit]
+
+
 env.roledefs.update({
-    'servers': servers,
+    'servers': dyn_server_role, #servers,
     'clients': clients
 })
 
+from collections import defaultdict
+env.timings = defaultdict(list)
+
 @roles("servers")
-@parallel
 def time():
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run('py.test-2.7 -s -k "full_client"')
+        x = run('py.test-2.7 -s -k "full_client"') + "\n\n"
+        x += run('py.test-2.7 -s -k "timing"')
+        
+        for k, v in re.findall("(.*:) (.*) / sec", x):
+            env.timings[k] += [ float(v) ]
+
+
+        import numpy as np
+
+        f = file("remote_timings.txt", "w")
+        for k, v in env.timings.iteritems():
+            f.write("%s %2.4f %2.4f\n" % (k, np.mean(v), np.std(v)))            
 
 def null():
     pass
@@ -130,7 +151,9 @@ def loadsecret():
 
 
 @roles("servers","clients")
+@parallel
 def passcache():
+    put('known_hosts', '~/.ssh/known_hosts')
     with cd('/home/ubuntu/projects/rscoin/.git'):
         sudo('touch ~/.ssh/id_rsa && rm ~/.ssh/id_rsa')
         put('~/.ssh/id_rsa', '~/.ssh/id_rsa')
@@ -141,13 +164,17 @@ def passcache():
         sudo('pip install petlib --upgrade')
         run("git pull")
 
+@runs_once
+def init():
+    local("grep rsa ~/.ssh/known_hosts > known_hosts")
+    execute(passcache)
+
 def runcollect():
     with cd('/home/ubuntu/projects/rscoin/src'):
         run("collectl -f LOGFILE -D")
         num = run("ps -A | grep collect")
         print re.findall("[0-9]+", num)[0]
         run("kill %s" % num)
-
 
 
 @runs_once
@@ -159,6 +186,8 @@ def deploy():
 
 @runs_once
 def experiment1():
+    env.messages = 200
+    env.expname = "experiment1"
     local( "rm -rf experiment1" )
     local( "mkdir experiment1" )
     execute( "experiment1run" )
@@ -175,38 +204,46 @@ def experiment1run():
     # local("sudo echo 20000500 > /proc/sys/fs/nr_open")
     # local('sudo sh -c "ulimit -n 1048576"')
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run("python simscript.py 2000 payments.txt")
-        run("rm -rf experiment1")
-        run("mkdir experiment1")
-        run("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")
+        run("python simscript.py %s payments.txt" % env.messages)
+        run("rm -rf %s" % env.expname)
+        run("mkdir %s" % env.expname)
+        run("./rsc.py --play payments.txt-issue > %s/issue-times.txt" % env.expname)
         # run("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
 
 @roles("clients")
 @parallel
 def experiment1pre():
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
+        run("./rsc.py --play payments.txt-r1 > %s/r1-times.txt" % env.expname)
 
 
 @roles("clients")
 @parallel
 def experiment1actual():
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run("./rsc.py --play payments.txt-r2 --conn 20 > experiment1/r2-times.txt")
+        run("./rsc.py --play payments.txt-r2 --conn 20 > %s/r2-times.txt" % env.expname)
 
 
 @roles("clients")
 def experiment1collect():        
         # run("ls experiment1/*")
-    with cd('/home/ubuntu/projects/rscoin/src'):
-        get('experiment1/issue-times.txt', 'experiment1/%s-issue-times.txt' % env.host)
-        local("cat experiment1/%s-issue-times.txt >> experiment1/issue-times.txt" % env.host)
+    with cd('/home/ubuntu/projects/rscoin/src/%s' % env.expname):
+        get('issue-times.txt', '%s/%s-issue-times.txt' % (env.expname, env.host))
 
-        get('experiment1/r1-times.txt', 'experiment1/%s-r1-times.txt' % env.host)
-        local("cat experiment1/%s-r1-times.txt >> experiment1/r1-times.txt" % env.host)
+    with lcd(env.expname):
+        local("cat %s-issue-times.txt >> issue-times.txt" % env.host)
 
-        get('experiment1/r2-times.txt', 'experiment1/%s-r2-times.txt' % env.host)
-        local("cat experiment1/%s-r2-times.txt >> experiment1/r2-times.txt" % env.host)
+    with cd('/home/ubuntu/projects/rscoin/src/%s' % env.expname):
+        get('r1-times.txt', '%s/%s-r1-times.txt' % (env.expname, env.host))
+    
+    with lcd(env.expname):
+        local("cat %s-r1-times.txt >> r1-times.txt" % env.host)
+
+    with cd('/home/ubuntu/projects/rscoin/src/%s' % env.expname):
+        get('r2-times.txt', '%s/%s-r2-times.txt' % (env.expname, env.host))
+
+    with lcd(env.expname):
+        local("cat %s-r2-times.txt >> r2-times.txt" % env.host)
 
         # local("python exp1plot.py experiment1")
 
@@ -221,3 +258,40 @@ def experiment2():
     local("./rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
 
     local("python exp1plot.py experiment2")
+
+
+@runs_once
+def experiment3():
+
+    env.messages = 200
+
+    for i in range(1, len(servers)):
+
+        env.expname = "experiment3x%03d" % i
+        with settings(warn_only=True):
+            local( "rm -rf %s" % env.expname )
+        local( "mkdir %s" % env.expname )
+
+
+        print (str(i) + " ") * 10
+        env.slimit = i
+        # execute(exp3each)
+        
+        execute(keys)
+        execute(loaddir)
+
+        with settings(warn_only=True):
+            execute(stop)
+        execute(start)
+
+        execute( experiment1run )
+        execute( experiment1pre )
+
+        execute(stop)
+
+
+@roles("servers")
+def exp3each():
+    print "Hello: %s" % env.host
+    execute(keys)
+    execute(loaddir)

@@ -139,17 +139,17 @@ def play(core, directory):
     Cauths = set(Cauths_L)
     
     assert len(Cauths) == len(Cauths_L)
-    assert len(Cauths) == 3
+    assert len(Cauths) <= 3
 
     Csmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Cauths]
     
-    assert len(Csmall_dir) == 3
+    assert len(Csmall_dir) <= 3
     
     d_end = defer.Deferred()
 
     def get_commit_responses(resp):
         try:
-            assert len(resp) == 3
+            assert len(resp) <= 3
             for r in resp:
                 res = unpackage_commit_response(r)
                 if res[0] != "OK":
