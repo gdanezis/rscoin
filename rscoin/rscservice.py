@@ -381,5 +381,5 @@ def get_authorities(directory, xID, N = 3):
         auths =  [d[(i + j - 1) % len(d)][0] for j in range(N)]
 
     assert 0 <= len(auths) <= N
-    print N
+    # print N
     return auths
