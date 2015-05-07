@@ -17,12 +17,24 @@ def parse_machines(s):
 
 
 servers = parse_machines("""
-    i-f2b2b215: ec2-52-17-190-122.eu-west-1.compute.amazonaws.com
-    i-f3b2b214: ec2-52-17-176-62.eu-west-1.compute.amazonaws.com
-    i-fcb2b21b: ec2-52-17-213-23.eu-west-1.compute.amazonaws.com
+    i-c06d6e27: ec2-54-72-1-135.eu-west-1.compute.amazonaws.com
+    i-c16d6e26: ec2-52-17-146-130.eu-west-1.compute.amazonaws.com
+    i-c26d6e25: ec2-54-76-28-34.eu-west-1.compute.amazonaws.com
+    i-c36d6e24: ec2-54-72-236-87.eu-west-1.compute.amazonaws.com
+    i-c46d6e23: ec2-52-17-63-24.eu-west-1.compute.amazonaws.com
+    i-c56d6e22: ec2-54-72-27-165.eu-west-1.compute.amazonaws.com
+    i-c66d6e21: ec2-54-76-21-223.eu-west-1.compute.amazonaws.com
+    i-c76d6e20: ec2-54-76-21-219.eu-west-1.compute.amazonaws.com
+    i-c86d6e2f: ec2-54-72-208-211.eu-west-1.compute.amazonaws.com
+    i-c96d6e2e: ec2-54-72-245-162.eu-west-1.compute.amazonaws.com
+    i-ca6d6e2d: ec2-52-17-120-159.eu-west-1.compute.amazonaws.com
+    i-cb6d6e2c: ec2-52-17-253-59.eu-west-1.compute.amazonaws.com
 """)
 
 clients = parse_machines("""
+    i-f2b2b215: ec2-52-17-190-122.eu-west-1.compute.amazonaws.com
+    i-f3b2b214: ec2-52-17-176-62.eu-west-1.compute.amazonaws.com
+    i-fcb2b21b: ec2-52-17-213-23.eu-west-1.compute.amazonaws.com
     i-fdb2b21a: ec2-52-17-148-178.eu-west-1.compute.amazonaws.com
     i-feb2b219: ec2-52-17-166-42.eu-west-1.compute.amazonaws.com
     i-ffb2b218: ec2-52-17-243-128.eu-west-1.compute.amazonaws.com
@@ -41,7 +53,6 @@ def null():
 def gitpull():
     with cd('/home/ubuntu/projects/rscoin/src'):
         # run('git commit -m "merge" -a')
-        sudo('pip install petlib --upgrade')
         run('git pull')
 
 @roles("servers","clients")
@@ -75,6 +86,8 @@ def keys():
 
     [_, host] = env.host_string.split("@")
     with cd('/home/ubuntu/projects/rscoin/src'):
+        run('touch secret.key')
+        run('rm secret.key')
         result = run('python derivekey.py --store')
         [_, key] = result.strip().split()
         
@@ -105,6 +118,7 @@ def passcache():
         put('../.git/config', 'config')
 
     with cd('/home/ubuntu/projects/rscoin/src'):
+        sudo('pip install petlib --upgrade')
         run("git pull")
 
 def runcollect():
@@ -145,7 +159,7 @@ def experiment1run():
     # local("sudo echo 20000500 > /proc/sys/fs/nr_open")
     # local('sudo sh -c "ulimit -n 1048576"')
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run("python simscript.py 1000 payments.txt")
+        run("python simscript.py 2000 payments.txt")
         run("rm -rf experiment1")
         run("mkdir experiment1")
         run("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")

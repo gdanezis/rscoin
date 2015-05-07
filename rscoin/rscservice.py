@@ -375,7 +375,11 @@ def get_authorities(directory, xID, N = 3):
             assert isinstance(di, str) and len(di) == 32
 
     if len(d) <= N:
-        return [di[0] for di in d]
+        auths = [di[0] for di in d]
+    else:
+        i = bisect_left(d, (xID, None, None))
+        auths =  [d[(i + j - 1) % len(d)][0] for j in range(N)]
 
-    i = bisect_left(d, (xID, None, None))
-    return [d[(i + j - 1) % len(d)][0] for j in range(N)]
+    assert 0 <= len(auths) <= N
+    print N
+    return auths

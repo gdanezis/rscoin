@@ -128,15 +128,21 @@ def play(core, directory):
     # Check that at least one Input is handled by this server
     Qauths = []
     for ik in inTxo:
-        Qauths += get_authorities(directory, ik)
+        Qauths += get_authorities(directory, ik, 3)
     Qauths = set(Qauths)
     Qsmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Qauths]
     # print len(Qsmall_dir)
 
-    Cauths = set(get_authorities(directory, tx.id()))
-    Csmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Cauths]
-    assert len(Csmall_dir) == 3
+    Cauths_L = get_authorities(directory, tx.id(), N=3)
+    Cauths = set(Cauths_L)
+    
+    assert len(Cauths) == len(Cauths_L)
+    assert len(Cauths) == 3
 
+    Csmall_dir = [(kid, ip, port) for (kid, ip, port) in directory if kid in Cauths]
+    
+    assert len(Csmall_dir) == 3
+    
     d_end = defer.Deferred()
 
     def get_commit_responses(resp):
@@ -262,7 +268,7 @@ if __name__ == "__main__":
 
     elif args.play:
 
-        threads = [ None ] * 10
+        threads = [ None ] * 40
         cores = []
 
         for core in file(args.play[0]):

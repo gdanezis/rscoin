@@ -9,38 +9,36 @@ from os.path import join
 import re
 
 
-directory = sys.argv[1]
 
 def get_times(data):
     lst = re.findall("Commit OK \d+[.]\d+ \d+[.]\d+ \d+[.]\d+", data.read())
     lst = map(lambda x: float(x.split()[2]), lst)
     return lst
 
-# d1 = file(join(directory, "issue-times.txt")) # .read()
-issueT = get_times(file(join(directory, "issue-times.txt")))
-#np.array(map(float, re.findall("\d+[.]\d+", d1)))
-r1T = get_times(file(join(directory, "r1-times.txt")))
-#r1T = map(float, re.findall("\d+[.]\d+", file(join(directory, "r1-times.txt")).read()))
-#r2T = map(float, re.findall("\d+[.]\d+", file(join(directory, "r2-times.txt")).read()))
-r2T = get_times(file(join(directory, "r2-times.txt")))
+
+if __name__ == "__main__":
+    directory = sys.argv[1]
+
+    issueT = get_times(file(join(directory, "issue-times.txt")))
+    r1T = get_times(file(join(directory, "r1-times.txt")))
+    r2T = get_times(file(join(directory, "r2-times.txt")))
+
+    bins = np.arange(0,2, 0.075)
+    # the histogram of the data
+    n, bins, patches = plt.hist((issueT, r1T, r2T), bins, normed=1, alpha=0.75, label=["Issuing","Pay (Original)","Pay (Normal)"])
+
+    [p.set_hatch("/") for p in patches[0].patches]
+    [p.set_hatch("\\") for p in patches[1].patches]
+    [p.set_hatch("x") for p in patches[2].patches]
 
 
-bins = np.arange(0,2, 0.075)
-# the histogram of the data
-n, bins, patches = plt.hist((issueT, r1T, r2T), bins, normed=1, alpha=0.75, label=["Issuing","Pay (Original)","Pay (Normal)"])
+    plt.xlabel('Latency (sec)')
+    plt.ylabel('Probability density')
+    plt.title(r'RSCoin Issue & Pay Protocol Latency')
+    plt.axis([0, 1.5, 0, 8])
+    plt.grid(True)
 
-[p.set_hatch("/") for p in patches[0].patches]
-[p.set_hatch("\\") for p in patches[1].patches]
-[p.set_hatch("x") for p in patches[2].patches]
+    first_legend = plt.legend(loc=1)
 
-
-plt.xlabel('Latency (sec)')
-plt.ylabel('Probability density')
-plt.title(r'RSCoin Issue & Pay Protocol Latency')
-plt.axis([0, 1.5, 0, 8])
-plt.grid(True)
-
-first_legend = plt.legend(loc=1)
-
-plt.savefig(join(directory, "latency.pdf"))
-plt.close()
+    plt.savefig(join(directory, "latency.pdf"))
+    plt.close()
