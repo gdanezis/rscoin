@@ -184,7 +184,7 @@ def experiment1pre():
 @parallel
 def experiment1actual():
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run("./rsc.py --play payments.txt-r2 > experiment1/r2-times.txt")
+        run("./rsc.py --play payments.txt-r2 --conn 50 > experiment1/r2-times.txt")
 
 
 @roles("clients")
@@ -207,7 +207,7 @@ def experiment2():
     local("rm -rf experiment2")
     local("mkdir experiment2")
 
-    local("python simscript.py 200 payments.txt")
+    local("python simscript.py 2000 payments.txt")
     local("./rsc.py --play payments.txt-issue > experiment2/issue-times.txt")
     local("./rsc.py --play payments.txt-r1 > experiment2/r1-times.txt")
     local("./rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")

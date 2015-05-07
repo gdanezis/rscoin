@@ -272,7 +272,7 @@ if __name__ == "__main__":
 
     elif args.play:
 
-        threads = [ None ] * args.conn
+        threads = [ None ] * args.conn[0]
         cores = []
 
         for core in file(args.play[0]):
