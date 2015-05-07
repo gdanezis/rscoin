@@ -263,7 +263,7 @@ def experiment2():
 @runs_once
 def experiment3():
 
-    env.messages = 200
+    env.messages = 1000
 
     for i in range(1, len(servers)):
 
@@ -282,12 +282,25 @@ def experiment3():
 
         with settings(warn_only=True):
             execute(stop)
+
+        with settings(warn_only=True):            
+            execute(clean)
+
         execute(start)
 
         execute( experiment1run )
         execute( experiment1pre )
 
-        execute(stop)
+        execute( experiment1actual )
+        execute( experiment1collect )
+
+
+        with settings(warn_only=True):
+            execute(stop)
+
+        local("python exp1plot.py %s" % env.expname)
+        local("python estthroughput.py %s > %s/stats.txt" % (env.expname, env.expname))
+
 
 
 @roles("servers")

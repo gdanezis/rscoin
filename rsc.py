@@ -20,10 +20,12 @@ class RSCconnection(LineReceiver):
 
     def lineReceived(self, line):
         self.factory.add_to_buffer(line)
+        self.factory.close = True
         self.transport.loseConnection()
 
 class RSCfactory(Factory):
     def __init__(self):
+        self.close = False
         self.d = defer.Deferred()
 
     def add_to_buffer(self, line):
@@ -34,7 +36,9 @@ class RSCfactory(Factory):
         return RSCconnection(self)
 
     def clientConnectionLost(self, connector, reason):
-        pass # self.add_to_buffer(None)
+        # pass # self.add_to_buffer(None)
+        if not self.close:
+            self.d.errback(line)
 
     def clientConnectionFailed(self, connector, reason):
         pass # self.add_to_buffer(None)
