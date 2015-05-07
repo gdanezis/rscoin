@@ -20,12 +20,17 @@ class RSCconnection(LineReceiver):
 
     def lineReceived(self, line):
         self.factory.add_to_buffer(line)
-        self.factory.close = True
+
+        self.factory.should_close = True
         self.transport.loseConnection()
+
+    def connectionLost(self, reason):
+        if not self.factory.should_close:
+            self.factory.d.errback(reason)
 
 class RSCfactory(Factory):
     def __init__(self):
-        self.close = False
+        self.should_close = False
         self.d = defer.Deferred()
 
     def add_to_buffer(self, line):
@@ -37,8 +42,8 @@ class RSCfactory(Factory):
 
     def clientConnectionLost(self, connector, reason):
         # pass # self.add_to_buffer(None)
-        if not self.close:
-            self.d.errback(line)
+        if not self.should_close:
+            self.d.errback(reason)
 
     def clientConnectionFailed(self, connector, reason):
         pass # self.add_to_buffer(None)
@@ -102,22 +107,24 @@ class ActiveTx():
 def broadcast(small_dir, data):
     d_list = []
     responses = []
-    d = defer.Deferred()
+    # d = defer.Deferred()
 
     def gotProtocol(p):
         p.sendLine(data)
 
     for (kid, ip, port) in small_dir:
         _stats[ip] += 1
-        point = TCP4ClientEndpoint(reactor, ip, int(port))
+        point = TCP4ClientEndpoint(reactor, ip, int(port), timeout=10)
         f = RSCfactory()
+
         d = point.connect(f)
         d.addCallback(gotProtocol)
+        d.addErrback(f.d.errback)
 
         d_list += [ f.d ]
 
-    d = defer.gatherResults(d_list)
-    return d
+    d_all = defer.gatherResults(d_list)
+    return d_all
 
 def r_stop(results):
     if results is not None and isinstance(results, Exception):
