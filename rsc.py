@@ -150,7 +150,7 @@ def play(core, directory):
                     return
             t1 = default_timer()
             # print 
-            print "Commit OK", t1 - t0
+            print "Commit OK", t1 - t0, t0, t1
             d_end.callback(t1 - t0)
         except Exception as e:
             d_end.errback(e)

@@ -1,5 +1,5 @@
-from fabric.api import run, env, cd, put, execute, require, sudo, local
-from fabric.decorators import runs_once
+from fabric.api import run, env, cd, put, get, execute, require, sudo, local
+from fabric.decorators import runs_once, roles, parallel
 
 
 from base64 import b64encode, b64decode
@@ -9,45 +9,62 @@ import sys
 sys.path += [ "." ]
 
 import re
-aws_str = """
-    i-54c1f1b2: ec2-52-17-100-153.eu-west-1.compute.amazonaws.com
-    i-55c1f1b3: ec2-52-17-47-246.eu-west-1.compute.amazonaws.com
-    i-56c1f1b0: ec2-52-17-191-196.eu-west-1.compute.amazonaws.com
-    i-57c1f1b1: ec2-52-17-98-120.eu-west-1.compute.amazonaws.com
-    i-dac4f43c: ec2-52-17-36-157.eu-west-1.compute.amazonaws.com
-"""
 
-ulrs = re.findall("ec2-.*.compute.amazonaws.com", aws_str)
+def parse_machines(s):
+    urls = re.findall("ec2-.*.compute.amazonaws.com", s)
+    names = [('ubuntu@' + u) for u in urls ]
+    return names
 
 
-env.hosts = [('ubuntu@' + u) for u in ulrs ]
+servers = parse_machines("""
+    i-f2b2b215: ec2-52-17-190-122.eu-west-1.compute.amazonaws.com
+    i-f3b2b214: ec2-52-17-176-62.eu-west-1.compute.amazonaws.com
+    i-fcb2b21b: ec2-52-17-213-23.eu-west-1.compute.amazonaws.com
+""")
+
+clients = parse_machines("""
+    i-fdb2b21a: ec2-52-17-148-178.eu-west-1.compute.amazonaws.com
+    i-feb2b219: ec2-52-17-166-42.eu-west-1.compute.amazonaws.com
+    i-ffb2b218: ec2-52-17-243-128.eu-west-1.compute.amazonaws.com
+""")
+
+env.roledefs.update({
+    'servers': servers,
+    'clients': clients
+})
 
 
 def null():
     pass
 
+@roles("servers","clients")
 def gitpull():
     with cd('/home/ubuntu/projects/rscoin/src'):
         # run('git commit -m "merge" -a')
         sudo('pip install petlib --upgrade')
         run('git pull')
 
+@roles("servers","clients")
 def host_type():
     run('uname -s')
 
+@roles("servers")
 def start():
     with cd('/home/ubuntu/projects/rscoin/src'):
         run('twistd -y rscserver.tac.py')
 
+@roles("servers")
 def clean():
     with cd('/home/ubuntu/projects/rscoin/src'):
         run('rm log-*')
         run('rm keys-*')
 
+@roles("servers")
 def stop():
     with cd('/home/ubuntu/projects/rscoin/src'):
         run('kill `cat twistd.pid`')
 
+@roles("servers")
 def keys():
     if "rsdir" not in env:
         secret = file("secret.key").read()
@@ -68,16 +85,26 @@ def keys():
     from json import dumps
     file("directory.conf", "w").write(dumps(env["rsdir"]))
 
+@roles("servers","clients")
 def loaddir():
     with cd('/home/ubuntu/projects/rscoin/src'):
         put('directory.conf', 'directory.conf')
 
-
-def passcache():
+@roles("clients")
+def loadsecret():
     with cd('/home/ubuntu/projects/rscoin/src'):
-        sudo("apt-get install collectl")
-        # sudo("/etc/init.d/collectl start -D")
-        run("git config credential.helper store")
+        put('secret.key', 'secret.key')
+
+
+@roles("servers","clients")
+def passcache():
+    with cd('/home/ubuntu/projects/rscoin/.git'):
+        sudo('touch ~/.ssh/id_rsa && rm ~/.ssh/id_rsa')
+        put('~/.ssh/id_rsa', '~/.ssh/id_rsa')
+        run('chmod 600 ~/.ssh/id_rsa')
+        put('../.git/config', 'config')
+
+    with cd('/home/ubuntu/projects/rscoin/src'):
         run("git pull")
 
 def runcollect():
@@ -101,15 +128,50 @@ def deploy():
     execute(gitpull)
     execute(keys)
     execute(loaddir)
+    execute(loadsecret)
 
 @runs_once
 def experiment1():
-    local("python simscript.py 1000 payments.txt")
-    local("rm -rf experiment1")
-    local("mkdir experiment1")
-    local("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")
-    local("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
-    local("./rsc.py --play payments.txt-r2 > experiment1/r2-times.txt")
+    local( "rm -rf experiment1" )
+    local( "mkdir experiment1" )
+    execute( "experiment1run" )
+    # local( "mkdir experiment1" )
     local("python exp1plot.py experiment1")
 
+@roles("clients")
+@parallel
+def experiment1run():
+    # local('sudo sysctl -w net.ipv4.ip_local_port_range="500   65535"')
+    # local("sudo echo 20000500 > /proc/sys/fs/nr_open")
+    # local('sudo sh -c "ulimit -n 1048576"')
+    with cd('/home/ubuntu/projects/rscoin/src'):
+        run("python simscript.py 300 payments.txt")
+        run("rm -rf experiment1")
+        run("mkdir experiment1")
+        run("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")
+        run("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
+        run("./rsc.py --play payments.txt-r2 > experiment1/r2-times.txt")
+        
+        # run("ls experiment1/*")
+        get('experiment1/issue-times.txt', 'experiment1/%s-issue-times.txt' % env.host)
+        local("cat experiment1/%s-issue-times.txt >> experiment1/issue-times.txt" % env.host)
 
+        get('experiment1/r1-times.txt', 'experiment1/%s-r1-times.txt' % env.host)
+        local("cat experiment1/%s-r1-times.txt >> experiment1/r1-times.txt" % env.host)
+
+        get('experiment1/r2-times.txt', 'experiment1/%s-r2-times.txt' % env.host)
+        local("cat experiment1/%s-r2-times.txt >> experiment1/r2-times.txt" % env.host)
+
+        # local("python exp1plot.py experiment1")
+
+@runs_once
+def experiment2():
+    local("rm -rf experiment2")
+    local("mkdir experiment2")
+
+    local("python simscript.py 300 payments.txt")
+    local("./rsc.py --play payments.txt-issue > experiment2/issue-times.txt")
+    local("./rsc.py --play payments.txt-r1 > experiment2/r1-times.txt")
+    local("./rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
+
+    local("python exp1plot.py experiment2")

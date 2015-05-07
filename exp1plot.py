@@ -11,10 +11,18 @@ import re
 
 directory = sys.argv[1]
 
-d1 = file(join(directory, "issue-times.txt")).read()
-issueT = np.array(map(float, re.findall("\d+[.]\d+", d1)))
-r1T = map(float, re.findall("\d+[.]\d+", file(join(directory, "r1-times.txt")).read()))
-r2T = map(float, re.findall("\d+[.]\d+", file(join(directory, "r2-times.txt")).read()))
+def get_times(data):
+    lst = re.findall("Commit OK \d+[.]\d+ \d+[.]\d+ \d+[.]\d+", data.read())
+    lst = map(lambda x: float(x.split()[2]), lst)
+    return lst
+
+# d1 = file(join(directory, "issue-times.txt")) # .read()
+issueT = get_times(file(join(directory, "issue-times.txt")))
+#np.array(map(float, re.findall("\d+[.]\d+", d1)))
+r1T = get_times(file(join(directory, "r1-times.txt")))
+#r1T = map(float, re.findall("\d+[.]\d+", file(join(directory, "r1-times.txt")).read()))
+#r2T = map(float, re.findall("\d+[.]\d+", file(join(directory, "r2-times.txt")).read()))
+r2T = get_times(file(join(directory, "r2-times.txt")))
 
 
 bins = np.arange(0,2, 0.075)
