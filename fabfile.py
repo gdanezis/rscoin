@@ -57,6 +57,13 @@ def gitpull():
         # run('git commit -m "merge" -a')
         run('git pull')
 
+@roles("clients")
+def gitclients():
+    with cd('/home/ubuntu/projects/rscoin/src'):
+        # run('git commit -m "merge" -a')
+        run('git pull')
+
+
 @roles("servers","clients")
 def host_type():
     run('uname -s')
