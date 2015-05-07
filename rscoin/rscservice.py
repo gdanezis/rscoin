@@ -1,5 +1,6 @@
 from base64 import b64encode, b64decode
 from binascii import hexlify
+from struct import pack, unpack
 
 from json import loads
 from bisect import bisect_left
@@ -377,8 +378,10 @@ def get_authorities(directory, xID, N = 3):
     if len(d) <= N:
         auths = [di[0] for di in d]
     else:
-        i = bisect_left(d, (xID, None, None))
+        i = unpack("I", xID[:4])[0] % len(d)
+        # i = bisect_left(d, (xID, None, None))
         auths =  [d[(i + j - 1) % len(d)][0] for j in range(N)]
+
 
     assert 0 <= len(auths) <= N
     # print N

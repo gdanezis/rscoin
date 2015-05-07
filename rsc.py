@@ -230,7 +230,8 @@ if __name__ == "__main__":
 
     parser.add_argument('--play', nargs=1, metavar="FILE", help='Play a set of transaction cores.')
 
-
+    parser.add_argument('--conn', nargs=1, default=20, type=int, metavar="CONNECTIONS", help='Number of simultaneaous connections.')
+    
     
     args = parser.parse_args()
 
@@ -271,7 +272,7 @@ if __name__ == "__main__":
 
     elif args.play:
 
-        threads = [ None ] * 20
+        threads = [ None ] * args.conn
         cores = []
 
         for core in file(args.play[0]):

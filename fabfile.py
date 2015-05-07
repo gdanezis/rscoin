@@ -68,6 +68,7 @@ def start():
         run('twistd -y rscserver.tac.py')
 
 @roles("servers")
+@parallel
 def clean():
     with cd('/home/ubuntu/projects/rscoin/src'):
         run('rm log-*')
@@ -153,6 +154,7 @@ def experiment1():
     local( "rm -rf experiment1" )
     local( "mkdir experiment1" )
     execute( "experiment1run" )
+    execute( "experiment1pre" )
     execute( "experiment1actual" )
     execute( "experiment1collect" )
     # local( "mkdir experiment1" )
@@ -165,11 +167,18 @@ def experiment1run():
     # local("sudo echo 20000500 > /proc/sys/fs/nr_open")
     # local('sudo sh -c "ulimit -n 1048576"')
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run("python simscript.py 200 payments.txt")
+        run("python simscript.py 2000 payments.txt")
         run("rm -rf experiment1")
         run("mkdir experiment1")
         run("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")
+        # run("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
+
+@roles("clients")
+@parallel
+def experiment1pre():
+    with cd('/home/ubuntu/projects/rscoin/src'):
         run("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
+
 
 @roles("clients")
 @parallel

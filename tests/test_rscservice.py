@@ -4,11 +4,13 @@ if __name__ == "__main__":
     sys.path += [ "." ]
 
 from base64 import b64encode, b64decode
+from binascii import hexlify
+
 from hashlib import sha256
 import os.path
 from os import urandom
 from timeit import default_timer as timer
-
+from collections import defaultdict
 
 from twisted.test.proto_helpers import StringTransport
 
@@ -16,6 +18,7 @@ import rscoin
 from rscoin.rscservice import RSCFactory, load_setup, get_authorities
 from rscoin.rscservice import package_query, unpackage_query_response, \
                         package_commit, unpackage_commit_response
+
 
 
 import pytest
@@ -220,6 +223,21 @@ def test_setup():
 
     assert public == directory[0][0]
     assert public_special == stuff["special"]
+
+def test_load_balance():
+    dir_data = load_setup(file("directory.conf").read())
+    directory = dir_data["directory"]
+
+    hist = defaultdict(int)
+    for _ in range(10000):
+        x = get_authorities(directory, urandom(32), N = 3)
+        for xi in x:
+            hist[xi] += 1
+
+    for ki, ni in sorted(hist.iteritems()):
+        print hexlify(ki)[:8], ni
+
+
 
 def test_multiple():
 
