@@ -17,29 +17,29 @@ def parse_machines(s):
 
 
 servers = parse_machines("""
-    i-d08b917b: ec2-54-72-70-139.eu-west-1.compute.amazonaws.com
-    i-d18b917a: ec2-54-72-14-117.eu-west-1.compute.amazonaws.com
-    i-d28b9179: ec2-54-72-38-66.eu-west-1.compute.amazonaws.com
-    i-d38b9178: ec2-54-72-46-150.eu-west-1.compute.amazonaws.com
-    i-d48b917f: ec2-54-72-32-83.eu-west-1.compute.amazonaws.com
-    i-d58b917e: ec2-54-72-17-217.eu-west-1.compute.amazonaws.com
-    i-d68b917d: ec2-54-72-24-217.eu-west-1.compute.amazonaws.com
-    i-d78b917c: ec2-54-72-24-54.eu-west-1.compute.amazonaws.com
-    i-dc8b9177: ec2-54-72-42-95.eu-west-1.compute.amazonaws.com
-    i-de8b9175: ec2-54-72-44-202.eu-west-1.compute.amazonaws.com
-    i-df8b9174: ec2-54-72-12-42.eu-west-1.compute.amazonaws.com
-    i-e08b914b: ec2-54-72-43-236.eu-west-1.compute.amazonaws.com
-    i-e18b914a: ec2-54-72-61-251.eu-west-1.compute.amazonaws.com
+    i-a0f0f347: ec2-52-17-72-222.eu-west-1.compute.amazonaws.com
+    i-a2f0f345: ec2-52-17-51-10.eu-west-1.compute.amazonaws.com
+    i-a3f0f344: ec2-52-17-69-120.eu-west-1.compute.amazonaws.com
+    i-acf0f34b: ec2-54-72-192-216.eu-west-1.compute.amazonaws.com
+    i-adf0f34a: ec2-54-72-182-116.eu-west-1.compute.amazonaws.com
+    i-aef0f349: ec2-52-16-177-32.eu-west-1.compute.amazonaws.com
+    i-aff0f348: ec2-54-72-107-143.eu-west-1.compute.amazonaws.com
+    i-d0f0f337: ec2-54-72-194-176.eu-west-1.compute.amazonaws.com
+    i-d1f0f336: ec2-54-72-101-70.eu-west-1.compute.amazonaws.com
+    i-d2f0f335: ec2-54-72-194-131.eu-west-1.compute.amazonaws.com
 """)
 
 clients = parse_machines("""
-    i-e38b9148: ec2-54-72-30-210.eu-west-1.compute.amazonaws.com
-    i-e48b914f: ec2-54-72-53-255.eu-west-1.compute.amazonaws.com
-    i-e58b914e: ec2-54-72-43-51.eu-west-1.compute.amazonaws.com
-    i-e68b914d: ec2-52-16-61-154.eu-west-1.compute.amazonaws.com
-    i-e78b914c: ec2-54-72-24-32.eu-west-1.compute.amazonaws.com
-    i-fb8b9150: ec2-54-72-72-2.eu-west-1.compute.amazonaws.com
-    i-e28b9149: ec2-54-72-35-182.eu-west-1.compute.amazonaws.com
+    i-d3f0f334: ec2-54-72-194-105.eu-west-1.compute.amazonaws.com
+    i-d4f0f333: ec2-54-72-30-210.eu-west-1.compute.amazonaws.com
+    i-d5f0f332: ec2-54-72-192-240.eu-west-1.compute.amazonaws.com
+    i-d6f0f331: ec2-54-72-194-23.eu-west-1.compute.amazonaws.com
+    i-d7f0f330: ec2-54-72-187-211.eu-west-1.compute.amazonaws.com
+    i-d8f0f33f: ec2-54-72-187-38.eu-west-1.compute.amazonaws.com
+    i-d9f0f33e: ec2-54-72-193-139.eu-west-1.compute.amazonaws.com
+    i-daf0f33d: ec2-54-72-194-234.eu-west-1.compute.amazonaws.com
+    i-dbf0f33c: ec2-54-72-191-142.eu-west-1.compute.amazonaws.com
+    i-def0f339: ec2-54-72-194-75.eu-west-1.compute.amazonaws.com
 """)
 
 env.roledefs.update({
@@ -47,6 +47,11 @@ env.roledefs.update({
     'clients': clients
 })
 
+@roles("servers")
+@parallel
+def time():
+    with cd('/home/ubuntu/projects/rscoin/src'):
+        run('py.test-2.7 -s -k "full_client"')
 
 def null():
     pass
@@ -57,8 +62,9 @@ def gitpull():
         # run('git commit -m "merge" -a')
         run('git pull')
 
-@roles("clients")
-def gitclients():
+@roles("servers", "clients")
+@parallel
+def gitall():
     with cd('/home/ubuntu/projects/rscoin/src'):
         # run('git commit -m "merge" -a')
         run('git pull')
@@ -81,7 +87,7 @@ def clean():
         run('rm log-*')
         run('rm keys-*')
 
-@roles("servers")
+@roles("servers", "clients")
 @parallel
 def stop():
     with cd('/home/ubuntu/projects/rscoin/src'):
@@ -111,11 +117,13 @@ def keys():
     file("directory.conf", "w").write(dumps(env["rsdir"]))
 
 @roles("servers","clients")
+@parallel
 def loaddir():
     with cd('/home/ubuntu/projects/rscoin/src'):
         put('directory.conf', 'directory.conf')
 
 @roles("clients")
+@parallel
 def loadsecret():
     with cd('/home/ubuntu/projects/rscoin/src'):
         put('secret.key', 'secret.key')
@@ -140,18 +148,11 @@ def runcollect():
         print re.findall("[0-9]+", num)[0]
         run("kill %s" % num)
 
-#    sudo("/etc/init.d/collectl start -D")
 
-#def collect():
-#    with cd('/home/ubuntu/projects/rscoin/src'):
-#        run("ls /var/log/collectl/")
-#        fname = run("ls /var/log/collectl/*.raw.gz")
-#        # run("cat %s" % fname)
-#        run("collectl -p %s -s cn" % fname)
 
 @runs_once
 def deploy():
-    execute(gitpull)
+    execute(gitall)
     execute(keys)
     execute(loaddir)
     execute(loadsecret)
@@ -191,7 +192,7 @@ def experiment1pre():
 @parallel
 def experiment1actual():
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run("./rsc.py --play payments.txt-r2 --conn 50 > experiment1/r2-times.txt")
+        run("./rsc.py --play payments.txt-r2 --conn 20 > experiment1/r2-times.txt")
 
 
 @roles("clients")
@@ -214,7 +215,7 @@ def experiment2():
     local("rm -rf experiment2")
     local("mkdir experiment2")
 
-    local("python simscript.py 2000 payments.txt")
+    local("python simscript.py 200 payments.txt")
     local("./rsc.py --play payments.txt-issue > experiment2/issue-times.txt")
     local("./rsc.py --play payments.txt-r1 > experiment2/r1-times.txt")
     local("./rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")

@@ -52,6 +52,8 @@ def load_keys():
 from cPickle import dump, load
 from collections import defaultdict
 
+_stats = defaultdict(int)
+
 class ActiveTx():
     def __init__(self, fname, keys):
         self.fname = fname
@@ -102,7 +104,7 @@ def broadcast(small_dir, data):
         p.sendLine(data)
 
     for (kid, ip, port) in small_dir:
-        
+        _stats[ip] += 1
         point = TCP4ClientEndpoint(reactor, ip, int(port))
         f = RSCfactory()
         d = point.connect(f)
@@ -299,6 +301,8 @@ if __name__ == "__main__":
         reactor.run()
         t1 = default_timer()
         print "Overall time: %s" % (t1 - t0)
+        for (ip, v) in sorted(_stats.iteritems()):
+            print "Stats: %s %s" % (ip, v)
 
     elif args.pay:
 
