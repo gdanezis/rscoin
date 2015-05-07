@@ -168,7 +168,7 @@ def play(core, directory):
 
         d = broadcast(Csmall_dir, c_msg)
         d.addCallback(get_commit_responses)
-        # d.addErrback(d_end.errback)
+        d.addErrback(d_end.errback)
 
     else:
         q_msg = " ".join(["Query", str(len(core))] + core)
@@ -184,19 +184,22 @@ def play(core, directory):
                         print resp
                         d_end.errback(Exception("Query failed."))
                         return
+
                     _, k, s = res
                     kss += [(k, s)]
 
 
                 commit_message = package_commit(core, kss)
 
-                d = broadcast(Csmall_dir, commit_message)
-                d.addCallback(get_commit_responses)
+                dx = broadcast(Csmall_dir, commit_message)
+                dx.addCallback(get_commit_responses)
+                dx.addErrback(d_end.errback)
 
             except Exception as e:
                 d_end.errback(e)
 
         d.addCallback(process_query_response)
+        d.addErrback(d_end.errback)
 
     return d_end
 
@@ -268,7 +271,7 @@ if __name__ == "__main__":
 
     elif args.play:
 
-        threads = [ None ] * 40
+        threads = [ None ] * 20
         cores = []
 
         for core in file(args.play[0]):

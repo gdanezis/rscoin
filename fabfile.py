@@ -17,27 +17,29 @@ def parse_machines(s):
 
 
 servers = parse_machines("""
-    i-c06d6e27: ec2-54-72-1-135.eu-west-1.compute.amazonaws.com
-    i-c16d6e26: ec2-52-17-146-130.eu-west-1.compute.amazonaws.com
-    i-c26d6e25: ec2-54-76-28-34.eu-west-1.compute.amazonaws.com
-    i-c36d6e24: ec2-54-72-236-87.eu-west-1.compute.amazonaws.com
-    i-c46d6e23: ec2-52-17-63-24.eu-west-1.compute.amazonaws.com
-    i-c56d6e22: ec2-54-72-27-165.eu-west-1.compute.amazonaws.com
-    i-c66d6e21: ec2-54-76-21-223.eu-west-1.compute.amazonaws.com
-    i-c76d6e20: ec2-54-76-21-219.eu-west-1.compute.amazonaws.com
-    i-c86d6e2f: ec2-54-72-208-211.eu-west-1.compute.amazonaws.com
-    i-c96d6e2e: ec2-54-72-245-162.eu-west-1.compute.amazonaws.com
-    i-ca6d6e2d: ec2-52-17-120-159.eu-west-1.compute.amazonaws.com
-    i-cb6d6e2c: ec2-52-17-253-59.eu-west-1.compute.amazonaws.com
+    i-d08b917b: ec2-54-72-70-139.eu-west-1.compute.amazonaws.com
+    i-d18b917a: ec2-54-72-14-117.eu-west-1.compute.amazonaws.com
+    i-d28b9179: ec2-54-72-38-66.eu-west-1.compute.amazonaws.com
+    i-d38b9178: ec2-54-72-46-150.eu-west-1.compute.amazonaws.com
+    i-d48b917f: ec2-54-72-32-83.eu-west-1.compute.amazonaws.com
+    i-d58b917e: ec2-54-72-17-217.eu-west-1.compute.amazonaws.com
+    i-d68b917d: ec2-54-72-24-217.eu-west-1.compute.amazonaws.com
+    i-d78b917c: ec2-54-72-24-54.eu-west-1.compute.amazonaws.com
+    i-dc8b9177: ec2-54-72-42-95.eu-west-1.compute.amazonaws.com
+    i-de8b9175: ec2-54-72-44-202.eu-west-1.compute.amazonaws.com
+    i-df8b9174: ec2-54-72-12-42.eu-west-1.compute.amazonaws.com
+    i-e08b914b: ec2-54-72-43-236.eu-west-1.compute.amazonaws.com
+    i-e18b914a: ec2-54-72-61-251.eu-west-1.compute.amazonaws.com
 """)
 
 clients = parse_machines("""
-    i-f2b2b215: ec2-52-17-190-122.eu-west-1.compute.amazonaws.com
-    i-f3b2b214: ec2-52-17-176-62.eu-west-1.compute.amazonaws.com
-    i-fcb2b21b: ec2-52-17-213-23.eu-west-1.compute.amazonaws.com
-    i-fdb2b21a: ec2-52-17-148-178.eu-west-1.compute.amazonaws.com
-    i-feb2b219: ec2-52-17-166-42.eu-west-1.compute.amazonaws.com
-    i-ffb2b218: ec2-52-17-243-128.eu-west-1.compute.amazonaws.com
+    i-e38b9148: ec2-54-72-30-210.eu-west-1.compute.amazonaws.com
+    i-e48b914f: ec2-54-72-53-255.eu-west-1.compute.amazonaws.com
+    i-e58b914e: ec2-54-72-43-51.eu-west-1.compute.amazonaws.com
+    i-e68b914d: ec2-52-16-61-154.eu-west-1.compute.amazonaws.com
+    i-e78b914c: ec2-54-72-24-32.eu-west-1.compute.amazonaws.com
+    i-fb8b9150: ec2-54-72-72-2.eu-west-1.compute.amazonaws.com
+    i-e28b9149: ec2-54-72-35-182.eu-west-1.compute.amazonaws.com
 """)
 
 env.roledefs.update({
@@ -60,6 +62,7 @@ def host_type():
     run('uname -s')
 
 @roles("servers")
+@parallel
 def start():
     with cd('/home/ubuntu/projects/rscoin/src'):
         run('twistd -y rscserver.tac.py')
@@ -71,6 +74,7 @@ def clean():
         run('rm keys-*')
 
 @roles("servers")
+@parallel
 def stop():
     with cd('/home/ubuntu/projects/rscoin/src'):
         run('kill `cat twistd.pid`')
@@ -149,6 +153,8 @@ def experiment1():
     local( "rm -rf experiment1" )
     local( "mkdir experiment1" )
     execute( "experiment1run" )
+    execute( "experiment1actual" )
+    execute( "experiment1collect" )
     # local( "mkdir experiment1" )
     local("python exp1plot.py experiment1")
 
@@ -159,14 +165,23 @@ def experiment1run():
     # local("sudo echo 20000500 > /proc/sys/fs/nr_open")
     # local('sudo sh -c "ulimit -n 1048576"')
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run("python simscript.py 2000 payments.txt")
+        run("python simscript.py 200 payments.txt")
         run("rm -rf experiment1")
         run("mkdir experiment1")
         run("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")
         run("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
+
+@roles("clients")
+@parallel
+def experiment1actual():
+    with cd('/home/ubuntu/projects/rscoin/src'):
         run("./rsc.py --play payments.txt-r2 > experiment1/r2-times.txt")
-        
+
+
+@roles("clients")
+def experiment1collect():        
         # run("ls experiment1/*")
+    with cd('/home/ubuntu/projects/rscoin/src'):
         get('experiment1/issue-times.txt', 'experiment1/%s-issue-times.txt' % env.host)
         local("cat experiment1/%s-issue-times.txt >> experiment1/issue-times.txt" % env.host)
 
@@ -183,7 +198,7 @@ def experiment2():
     local("rm -rf experiment2")
     local("mkdir experiment2")
 
-    local("python simscript.py 300 payments.txt")
+    local("python simscript.py 200 payments.txt")
     local("./rsc.py --play payments.txt-issue > experiment2/issue-times.txt")
     local("./rsc.py --play payments.txt-r1 > experiment2/r1-times.txt")
     local("./rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
