@@ -194,11 +194,15 @@ def play(core, directory):
 
     return d_end
 
+import socket
 
 if __name__ == "__main__":
     
     dir_data = load_setup(file("directory.conf").read())
     directory = dir_data["directory"]
+
+    dir_data["directory"] = [(kid, socket.gethostbyname(ip), port) for (kid, ip, port) in dir_data["directory"] ]
+
     special_id = dir_data["special"]
 
     # Options

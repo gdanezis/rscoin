@@ -145,7 +145,7 @@ def experiment1run():
     # local("sudo echo 20000500 > /proc/sys/fs/nr_open")
     # local('sudo sh -c "ulimit -n 1048576"')
     with cd('/home/ubuntu/projects/rscoin/src'):
-        run("python simscript.py 300 payments.txt")
+        run("python simscript.py 1000 payments.txt")
         run("rm -rf experiment1")
         run("mkdir experiment1")
         run("./rsc.py --play payments.txt-issue > experiment1/issue-times.txt")
