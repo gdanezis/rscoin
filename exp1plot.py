@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     bins = np.arange(0,2, 0.075)
     # the histogram of the data
-    n, bins, patches = plt.hist((issueT, r1T, r2T), bins, normed=1, alpha=0.75, label=["Issuing","Pay (Original)","Pay (Normal)"])
+    n, bins, patches = plt.hist((issueT, r1T, r2T), bins, normed=1, alpha=0.75, label=["Issuing","Pay (initial)","Pay (subsequent)"])
 
     [p.set_hatch("/") for p in patches[0].patches]
     [p.set_hatch("\\") for p in patches[1].patches]

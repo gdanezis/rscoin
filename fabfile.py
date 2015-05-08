@@ -254,7 +254,7 @@ def experiment2():
 
     local("python simscript.py 2000 payments.txt")
     local("./rsc.py --play payments.txt-issue > experiment2/issue-times.txt")
-    local("./rsc.py --play payments.txt-r1 --conn 100 > experiment2/r1-times.txt")
+    local("./rsc.py --play payments.txt-r1 --conn 20 > experiment2/r1-times.txt")
     local("./rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
 
     local("python exp1plot.py experiment2")
@@ -265,7 +265,7 @@ def experiment3():
 
     env.messages = 1000
 
-    for i in range(1, len(servers)):
+    for i in range(1, len(servers)+1):
 
         env.expname = "experiment3x%03d" % i
         with settings(warn_only=True):
@@ -276,15 +276,18 @@ def experiment3():
         print (str(i) + " ") * 10
         env.slimit = i
         # execute(exp3each)
-        
-        execute(keys)
-        execute(loaddir)
 
         with settings(warn_only=True):
             execute(stop)
 
         with settings(warn_only=True):            
             execute(clean)
+        
+        if "rsdir" in env:
+            del env["rsdir"]
+        execute(keys)
+        execute(loaddir)
+        execute(loadsecret)
 
         execute(start)
 
