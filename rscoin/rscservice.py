@@ -232,8 +232,12 @@ class RSCFactory(protocol.Factory):
             self.dbname = join(conf_dir, self.dbname)
             self.logname = join(conf_dir, self.logname)
 
-        self.db = dbm.open(self.dbname, 'c')
-        self.log = dbm.open(self.logname, 'c')
+        if RSCFactory._sync:
+            self.db = dbm.open(self.dbname, 'c')
+            self.log = dbm.open(self.logname, 'c')
+        else:
+            self.db = {} 
+            self.log = {}
 
     
     def buildProtocol(self, addr):

@@ -5,7 +5,7 @@ from hashlib import sha256
 
 from petlib.ec import EcGroup, EcPt
 from petlib.bn import Bn
-from petlib.ecdsa import do_ecdsa_sign, do_ecdsa_verify
+from petlib.ecdsa import do_ecdsa_sign, do_ecdsa_verify, do_ecdsa_setup
 
 from os import urandom
 
@@ -25,16 +25,18 @@ class Key:
         if public:
             self.sec = None
             self.pub = EcPt.from_binary(key_bytes, self.G)
+            self.optim = None
         else:
             self.sec = Bn.from_binary(sha256(key_bytes).digest())
             self.pub = self.sec * self.G.generator()
+            self.optim = do_ecdsa_setup(self.G, self.sec)
 
     def sign(self, message):
         """ Sign a 32-byte message using the key pair """
 
         assert len(message) == 32
         assert self.sec is not None
-        r, s = do_ecdsa_sign(self.G, self.sec, message)
+        r, s = do_ecdsa_sign(self.G, self.sec, message, self.optim)
         r0, s0 = r.binary(), s.binary()
         assert len(r0) <= 32 and len(s0) <= 32
         sig = pack("H32sH32s", len(r0), r0, len(s0), s0)
