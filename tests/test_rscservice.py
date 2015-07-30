@@ -585,6 +585,7 @@ if __name__ == "__main__":
         profile = LineProfiler(rscoin.rscservice.RSCProtocol.handle_Query, 
                                 rscoin.rscservice.RSCFactory.process_TxQuery,
                                 rscoin.Tx.check_transaction,
+                                rscoin.Tx.check_transaction_utxo,
                                 rscoin.Tx.parse)
         xxx = msg_mass()
         profile.run("test_full_client(xxx)")

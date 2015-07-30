@@ -9,6 +9,13 @@ import sys
 sys.path += [ "." ]
 
 import re
+import boto3
+ec2 = boto3.resource('ec2')
+
+
+def get_aws_machines():
+    instances = ec2.instances.filter(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+    return ['ubuntu@' + i.public_dns_name for i in instances]
 
 def parse_machines(s):
     urls = re.findall("ec2-.*.compute.amazonaws.com", s)
@@ -16,31 +23,9 @@ def parse_machines(s):
     return names
 
 
-servers = parse_machines("""
-    i-a0f0f347: ec2-52-17-72-222.eu-west-1.compute.amazonaws.com
-    i-a2f0f345: ec2-52-17-51-10.eu-west-1.compute.amazonaws.com
-    i-a3f0f344: ec2-52-17-69-120.eu-west-1.compute.amazonaws.com
-    i-acf0f34b: ec2-54-72-192-216.eu-west-1.compute.amazonaws.com
-    i-adf0f34a: ec2-54-72-182-116.eu-west-1.compute.amazonaws.com
-    i-aef0f349: ec2-52-16-177-32.eu-west-1.compute.amazonaws.com
-    i-aff0f348: ec2-54-72-107-143.eu-west-1.compute.amazonaws.com
-    i-d0f0f337: ec2-54-72-194-176.eu-west-1.compute.amazonaws.com
-    i-d1f0f336: ec2-54-72-101-70.eu-west-1.compute.amazonaws.com
-    i-d2f0f335: ec2-54-72-194-131.eu-west-1.compute.amazonaws.com
-""")
-
-clients = parse_machines("""
-    i-d3f0f334: ec2-54-72-194-105.eu-west-1.compute.amazonaws.com
-    i-d4f0f333: ec2-54-72-30-210.eu-west-1.compute.amazonaws.com
-    i-d5f0f332: ec2-54-72-192-240.eu-west-1.compute.amazonaws.com
-    i-d6f0f331: ec2-54-72-194-23.eu-west-1.compute.amazonaws.com
-    i-d7f0f330: ec2-54-72-187-211.eu-west-1.compute.amazonaws.com
-    i-d8f0f33f: ec2-54-72-187-38.eu-west-1.compute.amazonaws.com
-    i-d9f0f33e: ec2-54-72-193-139.eu-west-1.compute.amazonaws.com
-    i-daf0f33d: ec2-54-72-194-234.eu-west-1.compute.amazonaws.com
-    i-dbf0f33c: ec2-54-72-191-142.eu-west-1.compute.amazonaws.com
-    i-def0f339: ec2-54-72-194-75.eu-west-1.compute.amazonaws.com
-""")
+all_machines = get_aws_machines()
+servers = all_machines[:len(all_machines) / 2]
+clients = all_machines[len(all_machines) / 2:]
 
 
 def dyn_server_role():
@@ -57,6 +42,36 @@ env.roledefs.update({
 
 from collections import defaultdict
 env.timings = defaultdict(list)
+
+NUM_MACHINES = 10
+
+@runs_once
+def ec2start():
+    if len(all_machines) < NUM_MACHINES:
+        missing = NUM_MACHINES - len(all_machines)
+        ec2.create_instances(
+            ImageId='ami-178be960', 
+            InstanceType='t2.micro',
+            SecurityGroupIds= [ 'sg-ae5f0fcb' ],
+            MinCount=missing, 
+            MaxCount=missing )
+
+@runs_once
+def ec2list():
+    instances = ec2.instances.all()
+    for instance in instances:
+        print(instance.id, instance.state["Name"], instance.public_dns_name)
+
+
+@runs_once
+def ec2stop():
+    instances = ec2.instances.filter(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+    ids = [i.id for i in instances]
+    try:
+        ec2.instances.filter(InstanceIds=ids).stop()
+        ec2.instances.filter(InstanceIds=ids).terminate()
+    except Exception as e:
+        print e
 
 @roles("servers")
 def time():
