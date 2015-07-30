@@ -66,10 +66,13 @@ def test_authorities():
     directory = [(c* 32, "127.0.0.1", 8080) for c in chars]
 
     secret = "X"*32
-    factory = RSCFactory(secret, directory, None, N=5)
+    factory = RSCFactory(secret, directory, None, N=3)
 
-    assert factory.get_authorities("AXX")[-1][0] == "E"
-    assert factory.get_authorities("FXX")[-1][0] == "D"
+    print
+    print factory.get_authorities("AXXX")[-1]
+    print factory.get_authorities("FXXX")[-1]
+    assert factory.get_authorities("AXXX")[-1][0] == "A"
+    assert factory.get_authorities("FXXX")[-1][0] == "F"
 
 
 def test_TxQuery(sometx):
@@ -225,8 +228,12 @@ def test_setup():
     assert public_special == stuff["special"]
 
 def test_load_balance():
-    dir_data = load_setup(file("directory.conf").read())
-    directory = dir_data["directory"]
+    try:
+        dir_data = load_setup(file("directory.conf").read())
+        directory = dir_data["directory"]
+    except:
+        chars = ["A", "B", "C", "D", "E", "F"]
+        directory = [(c* 32, "127.0.0.1", 8080) for c in chars]
 
     hist = defaultdict(int)
     for _ in range(10000):
@@ -240,6 +247,12 @@ def test_load_balance():
 
 
 def test_multiple():
+
+    import os
+    try:
+        os.mkdir("testscratch")
+    except:
+        pass
 
     # Make special keys for making coins
     secret_special = "KEYSPECIAL"
@@ -260,7 +273,7 @@ def test_multiple():
     # Build the factories
     factories = {}
     for pub, sec in all_keys:
-        factory = RSCFactory(sec, directory, public_special, conf_dir="scratch", N=5)
+        factory = RSCFactory(sec, directory, public_special, conf_dir="testscratch", N=5)
         factories[pub] = factory
 
     # Make a mass of transactions
