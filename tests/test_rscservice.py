@@ -432,7 +432,6 @@ def test_full_client(msg_mass):
     ## Run a single client on single CPU and test-stress it.
     
     (sometx, mesages_q) = msg_mass
-    #print len(msg_mass), msg_mass
     (factory, instance, tr) = sometx
 
     responses = []
@@ -445,13 +444,7 @@ def test_full_client(msg_mass):
     t1 = timer()
     print "\nQuery message rate: %2.2f / sec" % (1.0 / ((t1-t0)/(len(mesages_q))))
 
-    # k, s = map(b64decode, response.split(" ")[1:])
-    # k2 = rscoin.Key(k)
-    # assert factory.key.verify(H, s)
-    # assert k2.verify(H, s)
-
     ## Now we test the Commit
-    #tr.clear()
     t0 = timer()
     for (tx, data, core, response) in responses:
         resp = response.split(" ")
@@ -459,7 +452,6 @@ def test_full_client(msg_mass):
         assert resp[0] == "OK"
         tr.clear()
         data = package_commit(core, [(k, s)])
-        # data = " ".join(["Commit", str(len(core))] + core + map(b64encode, [k, s]))
         instance.lineReceived(data)
         flag, pub, sig = tr.value().split(" ")
         assert flag == "OK"
@@ -468,12 +460,12 @@ def test_full_client(msg_mass):
         
 
 
-@pytest.mark.online
+# @pytest.mark.online
 def test_commit_error(sometx):
     (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
 
     instance.lineReceived("Commit X Y Z")
-
+    assert tr.value().strip() == "Error ParsingError"
 
 @pytest.mark.online
 def test_online_ping(sometx):

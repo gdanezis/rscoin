@@ -27,7 +27,6 @@ all_machines = get_aws_machines()
 servers = all_machines[:len(all_machines) / 2]
 clients = all_machines[len(all_machines) / 2:]
 
-
 def dyn_server_role():
     if "slimit" not in env:
         return servers
