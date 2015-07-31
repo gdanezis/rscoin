@@ -73,6 +73,8 @@ class ActiveTx():
         except:
             self.Tx = {}
 
+        self.saving_lock = False
+
     def add(self, Tx):
         ptx = rscoin.Tx.parse(Tx)
         for i, (key_id, value) in enumerate(ptx.outTx):
@@ -82,8 +84,14 @@ class ActiveTx():
     def remove(self, desc):
         del self.Tx[desc]
 
-    def save(self):
+    def save(self, reactor):
+        if not self.saving_lock:
+            self.saving_lock = True
+            reactor.callInThread(self._save)
+
+    def _save(self):
         dump(self.Tx, file(self.fname, "wb"))
+        self.saving_lock = False
 
     def balances(self):
         balances = defaultdict(int)
@@ -353,7 +361,7 @@ if __name__ == "__main__":
             for k in txs:
                 active.remove(k)
 
-            active.save()
+            active.save(reactor)
 
             ## Now run the on-line checking
             sechash, query_string, core = package_query(newtx, inTx_list, keys_list)
@@ -415,7 +423,7 @@ if __name__ == "__main__":
 
                 active = ActiveTx("activetx.log", keys)
                 active.add(tx_ser)
-                active.save()
+                active.save(reactor)
 
                 print " ".join(core)
 

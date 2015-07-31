@@ -42,7 +42,7 @@ env.roledefs.update({
 from collections import defaultdict
 env.timings = defaultdict(list)
 
-NUM_MACHINES = 10
+NUM_MACHINES = 8
 
 @runs_once
 def ec2start():
@@ -74,7 +74,7 @@ def ec2stop():
 
 @roles("servers")
 def time():
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         x = run('py.test-2.7 -s -k "full_client"') + "\n\n"
         x += run('py.test-2.7 -s -k "timing"')
         
@@ -93,15 +93,13 @@ def null():
 
 @roles("servers","clients")
 def gitpull():
-    with cd('/home/ubuntu/projects/rscoin/src'):
-        # run('git commit -m "merge" -a')
+    with cd('/home/ubuntu/projects/rscoin'):
         run('git pull')
 
 @roles("servers", "clients")
 @parallel
 def gitall():
-    with cd('/home/ubuntu/projects/rscoin/src'):
-        # run('git commit -m "merge" -a')
+    with cd('/home/ubuntu/projects/rscoin'):
         run('git pull')
 
 
@@ -112,20 +110,20 @@ def host_type():
 @roles("servers")
 @parallel
 def start():
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         run('twistd -y rscserver.tac.py')
 
 @roles("servers")
 @parallel
 def clean():
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         run('rm log-*')
         run('rm keys-*')
 
 @roles("servers", "clients")
 @parallel
 def stop():
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         run('kill `cat twistd.pid`')
 
 @roles("servers")
@@ -138,7 +136,7 @@ def keys():
         env["rsdir"] = {"special": pid, "directory": []}
 
     [_, host] = env.host_string.split("@")
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         run('touch secret.key')
         run('rm secret.key')
         result = run('python derivekey.py --store')
@@ -154,37 +152,34 @@ def keys():
 @roles("servers","clients")
 @parallel
 def loaddir():
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         put('directory.conf', 'directory.conf')
 
 @roles("clients")
 @parallel
 def loadsecret():
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         put('secret.key', 'secret.key')
 
 
 @roles("servers","clients")
 @parallel
 def passcache():
-    put('known_hosts', '~/.ssh/known_hosts')
-    with cd('/home/ubuntu/projects/rscoin/.git'):
-        sudo('touch ~/.ssh/id_rsa && rm ~/.ssh/id_rsa')
-        put('~/.ssh/id_rsa', '~/.ssh/id_rsa')
-        run('chmod 600 ~/.ssh/id_rsa')
-        put('../.git/config', 'config')
+    # Delete old folder and make a new one
+    sudo( 'rm -rf /home/ubuntu/projects/rscoin')
 
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects'):
         sudo('pip install petlib --upgrade')
-        run("git pull")
+        run("git clone https://github.com/gdanezis/rscoin.git")
 
 @runs_once
 def init():
     local("grep rsa ~/.ssh/known_hosts > known_hosts")
+    local("python derivekey.py --store")
     execute(passcache)
 
 def runcollect():
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         run("collectl -f LOGFILE -D")
         num = run("ps -A | grep collect")
         print re.findall("[0-9]+", num)[0]
@@ -217,7 +212,7 @@ def experiment1run():
     # local('sudo sysctl -w net.ipv4.ip_local_port_range="500   65535"')
     # local("sudo echo 20000500 > /proc/sys/fs/nr_open")
     # local('sudo sh -c "ulimit -n 1048576"')
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         run("python simscript.py %s payments.txt" % env.messages)
         run("rm -rf %s" % env.expname)
         run("mkdir %s" % env.expname)
@@ -227,33 +222,33 @@ def experiment1run():
 @roles("clients")
 @parallel
 def experiment1pre():
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         run("./rsc.py --play payments.txt-r1 > %s/r1-times.txt" % env.expname)
 
 
 @roles("clients")
 @parallel
 def experiment1actual():
-    with cd('/home/ubuntu/projects/rscoin/src'):
+    with cd('/home/ubuntu/projects/rscoin'):
         run("./rsc.py --play payments.txt-r2 --conn 20 > %s/r2-times.txt" % env.expname)
 
 
 @roles("clients")
 def experiment1collect():        
         # run("ls experiment1/*")
-    with cd('/home/ubuntu/projects/rscoin/src/%s' % env.expname):
+    with cd('/home/ubuntu/projects/rscoin/%s' % env.expname):
         get('issue-times.txt', '%s/%s-issue-times.txt' % (env.expname, env.host))
 
     with lcd(env.expname):
         local("cat %s-issue-times.txt >> issue-times.txt" % env.host)
 
-    with cd('/home/ubuntu/projects/rscoin/src/%s' % env.expname):
+    with cd('/home/ubuntu/projects/rscoin/%s' % env.expname):
         get('r1-times.txt', '%s/%s-r1-times.txt' % (env.expname, env.host))
     
     with lcd(env.expname):
         local("cat %s-r1-times.txt >> r1-times.txt" % env.host)
 
-    with cd('/home/ubuntu/projects/rscoin/src/%s' % env.expname):
+    with cd('/home/ubuntu/projects/rscoin/%s' % env.expname):
         get('r2-times.txt', '%s/%s-r2-times.txt' % (env.expname, env.host))
 
     with lcd(env.expname):
