@@ -226,8 +226,7 @@ def play(core, directory):
 
 import socket
 
-if __name__ == "__main__":
-    
+def main():    
     dir_data = load_setup(file("directory.conf").read())
     # directory = dir_data["directory"]
 
@@ -430,3 +429,6 @@ if __name__ == "__main__":
             d.addCallback(r_process)
             d.addBoth(r_stop)
             reactor.run()
+
+if __name__ == "__main__":
+    main()

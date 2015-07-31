@@ -42,7 +42,7 @@ env.roledefs.update({
 from collections import defaultdict
 env.timings = defaultdict(list)
 
-NUM_MACHINES = 8
+NUM_MACHINES = 60
 
 @runs_once
 def ec2start():
@@ -195,7 +195,7 @@ def deploy():
 
 @runs_once
 def experiment1():
-    env.messages = 200
+    env.messages = 2000
     env.expname = "experiment1"
     local( "rm -rf experiment1" )
     local( "mkdir experiment1" )
@@ -205,6 +205,8 @@ def experiment1():
     execute( "experiment1collect" )
     # local( "mkdir experiment1" )
     local("python exp1plot.py experiment1")
+    local("python estthroughput.py %s > %s/stats.txt" % (env.expname, env.expname))
+
 
 @roles("clients")
 @parallel
@@ -264,9 +266,12 @@ def experiment2():
     local("python simscript.py 2000 payments.txt")
     local("./rsc.py --play payments.txt-issue > experiment2/issue-times.txt")
     local("./rsc.py --play payments.txt-r1 --conn 20 > experiment2/r1-times.txt")
+    # local("python -m cProfile -s tottime rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
     local("./rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
 
     local("python exp1plot.py experiment2")
+    local("python estthroughput.py experiment2 > experiment2/stats.txt")
+
 
 
 @runs_once
