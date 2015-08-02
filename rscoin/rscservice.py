@@ -43,7 +43,7 @@ def package_query(tx, tx_deps, keys):
     dataCore = map(b64encode, items)    
     
     H = sha256(" ".join(dataCore)).digest()
-    data = " ".join(["Query", str(len(dataCore))] + dataCore)
+    data = " ".join(["xQuery", str(len(dataCore))] + dataCore)
 
     return H, data, dataCore
 
@@ -57,13 +57,23 @@ def unpackage_query_response(response):
 
     return resp
 
+
 def package_commit(core, ks_list):
     ks_flat = []
     for (k, s) in ks_list:
         ks_flat += [ k, s ]
 
-    data = " ".join(["Commit", str(len(core))] + core + map(b64encode, ks_flat))
+    data = " ".join(["xCommit", str(len(core))] + core + map(b64encode, ks_flat))
     return data
+
+
+def package_issue(tx, ks):
+    tx_ser = tx.serialize()
+    k, s = ks
+    core = map(b64encode, [tx_ser, k.export()[0], s])
+    data = " ".join(["xCommit", str(len(core))] + core)
+    return data
+
 
 def unpackage_commit_response(response):
     resp = response.strip().split(" ")
@@ -73,8 +83,6 @@ def unpackage_commit_response(response):
         resp[1:] = map(b64decode, resp[1:])
 
     return resp
-
-
 
 
 class RSCProtocol(LineReceiver):
@@ -185,11 +193,12 @@ class RSCProtocol(LineReceiver):
 
     def lineReceived(self, line):
         """ Simple de-multiplexer """
+
         items = line.split(" ")
-        if items[0] == "Query":
+        if items[0] == "xQuery":
             return self.handle_Query(items) # Get signatures           
 
-        if items[0] == "Commit":
+        if items[0] == "xCommit":
             return self.handle_Commit(items) # Seal a transaction
 
         if items[0] == "Ping":

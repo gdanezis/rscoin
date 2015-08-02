@@ -16,7 +16,7 @@ from twisted.test.proto_helpers import StringTransport
 import rscoin
 from rscoin.rscservice import RSCFactory, load_setup, get_authorities
 from rscoin.rscservice import package_query, unpackage_query_response, \
-                        package_commit, unpackage_commit_response
+                        package_commit, package_issue, unpackage_commit_response
 
 
 
@@ -131,12 +131,13 @@ def test_TxCommit(sometx):
     for ik in tx3.get_utxo_in_keys():
         assert ik in factory.db
 
-    data1 = map(b64encode, [tx3.serialize(), tx1.serialize(), tx2.serialize(), 
-                k1.export()[0], k2.export()[0], k1.sign(tx3.id()), k2.sign(tx3.id())])
+    #data1 = map(b64encode, [tx3.serialize(), tx1.serialize(), tx2.serialize(), 
+    #            k1.export()[0], k2.export()[0], k1.sign(tx3.id()), k2.sign(tx3.id())])
 
-    H = sha256(" ".join(data1)).digest()
+    #H = sha256(" ".join(data1)).digest()
 
-    data = " ".join(["Query", str(len(data1))] + data1)
+    #data = " ".join(["Query", str(len(data1))] + data1)
+    H, data, dataCore = package_query(tx3, [tx1, tx2], [k1, k2])
 
     instance.lineReceived(data)
     response = tr.value()
@@ -148,7 +149,9 @@ def test_TxCommit(sometx):
 
     ## Now we test the Commit
     tr.clear()
-    data = " ".join(["Commit", str(len(data1))] + data1 + map(b64encode, [k, s]))
+    # data = " ".join(["Commit", str(len(dataCore))] + dataCore + map(b64encode, [k, s]))
+
+    data = package_commit(dataCore, [(k, s)])
     instance.lineReceived(data)
     
     flag, pub, sig = tr.value().split(" ")
@@ -161,21 +164,17 @@ def test_TxCommit_Issued(sometx):
     (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
 
     kIssue = rscoin.Key(urandom(32), public=False)
-    pubIssue = kIssue.pub.export()
-    factory.special_key = kIssue.id() # Asssign this as the special key
+    pubIssue = kIssue.export()[0]
 
-    k1 = rscoin.Key(urandom(32), public=False)
-    k1pub = k1.pub.export()
+    factory.special_key = kIssue.id() # Asssign this as the special key
 
     tx3 = rscoin.Tx([], [rscoin.OutputTx(k1.id(), 250)])
 
     sig1 = kIssue.sign(tx3.id())
     assert tx3.check_transaction_utxo([], [pubIssue], [sig1], kIssue.id())
-
     assert tx3.check_transaction([], [pubIssue], [sig1], kIssue.id())
 
     ## Now we test the Commit
-    data1 = map(b64encode, [tx3.serialize(), pubIssue, sig1])
 
     # Ensure the entries are not in before sending message
     for k, v in tx3.get_utxo_out_entries():
@@ -183,7 +182,9 @@ def test_TxCommit_Issued(sometx):
 
     # Send message
     tr.clear()
-    data = " ".join(["Commit", str(len(data1))] + data1)
+
+    data = package_issue(tx3, [kIssue, sig1])
+
     instance.lineReceived(data)
 
     # Ensure the returned signatures check
@@ -463,7 +464,7 @@ def test_full_client(msg_mass):
 def test_commit_error(sometx):
     (factory, instance, tr), (k1, k2, tx1, tx2, tx3) = sometx
 
-    instance.lineReceived("Commit X Y Z")
+    instance.lineReceived("xCommit X Y Z")
     assert tr.value().strip() == "Error ParsingError"
 
 @pytest.mark.online
@@ -503,8 +504,10 @@ def test_online_issue(sometx):
     sig1 = kIssue.sign(tx3.id())
 
     ## Now we test the Commit
-    data1 = map(b64encode, [tx3.serialize(), pubIssue, sig1])
-    data = " ".join(["Commit", str(len(data1))] + data1)
+    #data1 = map(b64encode, [tx3.serialize(), pubIssue, sig1])
+    #data = " ".join(["Commit", str(len(data1))] + data1)
+
+    data = package_issue(tx3, [kIssue, sig1])
 
     # test on fake
     tr.clear()

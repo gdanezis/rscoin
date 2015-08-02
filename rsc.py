@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from rscoin.rscservice import RSCProtocol, RSCFactory, load_setup, unpackage_commit_response, get_authorities, \
-                    package_query, unpackage_query_response, package_commit, unpackage_commit_response
+                    package_query, unpackage_query_response, package_commit, package_issue, unpackage_commit_response
 
 import rscoin
 from base64 import b64encode, b64decode
@@ -393,9 +393,11 @@ def main():
         sig = mykey.sign(tx.id())
 
         ## Now we test the Commit
-        tx_ser = tx.serialize()
-        core = map(b64encode, [tx_ser, mykey.pub.export(), sig])
-        data = " ".join(["Commit", str(len(core))] + core)
+        #tx_ser = tx.serialize()
+        #core = map(b64encode, [tx_ser, mykey.pub.export(), sig])
+        #data = " ".join(["Commit", str(len(core))] + core)
+
+        data = package_issue(tx, [mykey, sig])
 
         if args.mock:
             print data
