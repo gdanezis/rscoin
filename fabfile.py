@@ -111,7 +111,7 @@ def host_type():
 @parallel
 def start():
     with cd('/home/ubuntu/projects/rscoin'):
-        run('twistd -y rscserver.tac.py')
+        run('export PYTHONOPTIMIZE=1; twistd -y rscserver.tac.py')
 
 @roles("servers")
 @parallel
@@ -232,7 +232,7 @@ def experiment1pre():
 @parallel
 def experiment1actual():
     with cd('/home/ubuntu/projects/rscoin'):
-        run("./rsc.py --play payments.txt-r2 --conn 30 > %s/r2-times.txt" % env.expname)
+        run("./rsc.py --play payments.txt-r2 --conn 20 > %s/r2-times.txt" % env.expname)
 
 
 @roles("clients")
