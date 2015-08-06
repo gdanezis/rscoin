@@ -122,10 +122,6 @@ def broadcast(small_dir, data):
     def gotProtocol(p):
         p.sendLine(data)
 
-    def timeout(exp):
-        print "Timeout?", exp
-        raise exp
-
     for (kid, ip, port) in small_dir:
         _stats[ip] += 1
         point = TCP4ClientEndpoint(reactor, ip, int(port), timeout=10)
@@ -307,13 +303,20 @@ def main():
             cores += [ c ]
 
         def play_another_song(var):
-            #if var:
-            #    print "ERROR", var
+            if var is not None and (not isinstance(var, float) or not isinstance(var, float)):
+                print "ERROR", var                
 
             if cores != []:
                 c = cores.pop()
                 d = play(c, directory)
-                d.addBoth(play_another_song)
+                d.addCallback(play_another_song)
+
+                def replay():
+                    cores += [ c ]
+
+                d.addErrback(replay)
+                d.addErrback(play_another_song)
+
             else:
                 threads.pop()
                 if threads == []:
@@ -325,6 +328,7 @@ def main():
         t0 = default_timer()
         reactor.run()
         t1 = default_timer()
+        
         print "Overall time: %s" % (t1 - t0)
         for (ip, v) in sorted(_stats.iteritems()):
             print "Stats: %s %s" % (ip, v)
