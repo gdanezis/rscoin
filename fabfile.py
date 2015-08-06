@@ -236,7 +236,7 @@ def experiment1():
     execute( "experiment1pre" )
     execute( "experiment1actual" )
     execute( "experiment1collect" )
-    # local( "mkdir experiment1" )
+
     local("python exp1plot.py experiment1")
     local("python estthroughput.py %s > %s/stats.txt" % (env.expname, env.expname))
 
@@ -251,21 +251,21 @@ def experiment1run():
         run("python simscript.py %s payments.txt" % env.messages)
         run("rm -rf %s" % env.expname)
         run("mkdir %s" % env.expname)
-        run("./rsc.py --play payments.txt-issue --conn 10 > %s/issue-times.txt" % env.expname)
+        run("./rsc.py --play payments.txt-issue > %s/issue-times.txt" % env.expname)
         # run("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
 
 @roles("clients")
 @parallel
 def experiment1pre():
     with cd('/home/ubuntu/projects/rscoin'):
-        run("./rsc.py --play payments.txt-r1 > %s/r1-times.txt" % env.expname)
+        run("./rsc.py --play payments.txt-r1 --conn 30 > %s/r1-times.txt" % env.expname)
 
 
 @roles("clients")
 @parallel
 def experiment1actual():
     with cd('/home/ubuntu/projects/rscoin'):
-        run("./rsc.py --play payments.txt-r2 --conn 30 > %s/r2-times.txt" % env.expname)
+        run("./rsc.py --play payments.txt-r2 > %s/r2-times.txt" % env.expname)
 
 
 @roles("clients")
@@ -299,7 +299,6 @@ def experiment2():
     local("python simscript.py 1000 payments.txt")
     local("./rsc.py --play payments.txt-issue > experiment2/issue-times.txt")
     local("./rsc.py --play payments.txt-r1 --conn 30 > experiment2/r1-times.txt")
-    # local("python -m cProfile -s tottime rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
     local("./rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
 
     local("python exp1plot.py experiment2")
@@ -313,7 +312,7 @@ def experiment3():
     env.messages = 1000
 
     ## Use 20 clients
-    env.climit = 20
+    env.climit = 25
 
     for i in [10, 15, 20, 25, 30]: # range(1, len(servers)+1):
 

@@ -122,6 +122,10 @@ def broadcast(small_dir, data):
     def gotProtocol(p):
         p.sendLine(data)
 
+    def timeout(exp):
+        print "Timeout?", exp
+        raise exp
+
     for (kid, ip, port) in small_dir:
         _stats[ip] += 1
         point = TCP4ClientEndpoint(reactor, ip, int(port), timeout=10)
@@ -129,7 +133,8 @@ def broadcast(small_dir, data):
 
         d = point.connect(f)
         d.addCallback(gotProtocol)
-        d.addErrback(f.d.errback)
+        d.addErrback(timeout)
+        # f.d.errback
 
         d_list += [ f.d ]
 
