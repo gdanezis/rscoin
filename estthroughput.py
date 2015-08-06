@@ -29,6 +29,7 @@ def process_recs(directory, fname):
     recs = list(sorted(recs.iteritems()))
     recs = [v for k, v in recs[1:-1]]
 
+    print recs
     print "%10s\t% 6.4f\t% 6.4f" % (fname, mean(recs), std(recs))
 
     return recs, mean(recs), std(recs)

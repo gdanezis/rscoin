@@ -133,7 +133,7 @@ def broadcast(small_dir, data):
 
         d = point.connect(f)
         d.addCallback(gotProtocol)
-        d.addErrback(timeout)
+        d.addErrback(f.d.errback)
         # f.d.errback
 
         d_list += [ f.d ]
