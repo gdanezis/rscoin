@@ -131,7 +131,8 @@ def host_type():
 @parallel
 def start():
     with cd('/home/ubuntu/projects/rscoin'):
-        run('export PYTHONOPTIMIZE=1; twistd -y rscserver.tac.py')
+        # run('export PYTHONOPTIMIZE=1; twistd -y rscserver.tac.py')
+        run('twistd -y rscserver.tac.py')
 
 @roles("servers")
 @parallel

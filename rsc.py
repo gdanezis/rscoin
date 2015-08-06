@@ -46,7 +46,9 @@ class RSCfactory(Factory):
             self.d.errback(reason)
 
     def clientConnectionFailed(self, connector, reason):
-        pass # self.add_to_buffer(None)
+        if not self.should_close:
+            self.d.errback(reason)
+        # pass # self.add_to_buffer(None)
 
 def load_keys():
     keys = {}
@@ -300,8 +302,8 @@ def main():
             cores += [ c ]
 
         def play_another_song(var):
-            if var:
-                print "ERROR", var
+            #if var:
+            #    print "ERROR", var
 
             if cores != []:
                 c = cores.pop()
