@@ -263,7 +263,7 @@ def experiment2():
     local("rm -rf experiment2")
     local("mkdir experiment2")
 
-    local("python simscript.py 2000 payments.txt")
+    local("python simscript.py 200 payments.txt")
     local("./rsc.py --play payments.txt-issue > experiment2/issue-times.txt")
     local("./rsc.py --play payments.txt-r1 --conn 20 > experiment2/r1-times.txt")
     # local("python -m cProfile -s tottime rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")

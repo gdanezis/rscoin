@@ -206,7 +206,7 @@ class RSCProtocol(LineReceiver):
             return # self.handle_Commit(items) # Seal a transaction
 
 
-        self.return_Err("UnknownCommand")
+        self.return_Err("UnknownCommand:%s" % items[0])
         return
 
     def sign(self, H):

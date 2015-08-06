@@ -185,14 +185,14 @@ def play(core, directory):
 
     if len(tx.inTx) == 0:
         # We are dealing with an issue message
-        c_msg = " ".join(["Commit", str(len(core))] + core)
+        c_msg = " ".join(["xCommit", str(len(core))] + core)
 
         d = broadcast(Csmall_dir, c_msg)
         d.addCallback(get_commit_responses)
         d.addErrback(d_end.errback)
 
     else:
-        q_msg = " ".join(["Query", str(len(core))] + core)
+        q_msg = " ".join(["xQuery", str(len(core))] + core)
 
         d = broadcast(Qsmall_dir, q_msg)
 
