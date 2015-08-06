@@ -33,10 +33,16 @@ def dyn_server_role():
     else:
         return servers[:env.slimit]
 
+def dyn_client_role():
+    if "climit" not in env:
+        return clients
+    else:
+        return clients[:env.climit]
+
 
 env.roledefs.update({
     'servers': dyn_server_role, #servers,
-    'clients': clients
+    'clients': dyn_client_role
 })
 
 from collections import defaultdict
@@ -86,7 +92,21 @@ def time():
 
         f = file("remote_timings.txt", "w")
         for k, v in env.timings.iteritems():
-            f.write("%s %2.4f %2.4f\n" % (k, np.mean(v), np.std(v)))            
+            f.write("%s %2.4f %2.4f\n" % (k, np.mean(v), np.std(v)))   
+        # f.close()         
+
+@roles("servers")
+@parallel
+def cpu():
+    out = run("sysbench --test=cpu --cpu-max-prime=2000 run")
+    f = file("cpu.txt", "a")
+    f.write(out)
+    f.close()
+
+@runs_once
+def local_cpu():
+    local("sysbench --test=cpu --cpu-max-prime=2000 run")
+    
 
 def null():
     pass
@@ -117,14 +137,25 @@ def start():
 @parallel
 def clean():
     with cd('/home/ubuntu/projects/rscoin'):
-        run('rm log-*')
+        run('rm -rf experiment*')
         run('rm keys-*')
 
 @roles("servers", "clients")
 @parallel
 def stop():
     with cd('/home/ubuntu/projects/rscoin'):
-        run('kill `cat twistd.pid`')
+        with settings(warn_only=True):
+            
+            try:
+                out = run('ps -u ubuntu')
+                if "twistd" in out:
+                    out = run('ps -u ubuntu | grep "twis"')
+                    pid = out.strip().split()[0]
+                    run('kill %s' % pid)
+            except:
+                pass
+            # print out
+            
 
 @roles("servers")
 def keys():
@@ -167,6 +198,7 @@ def loadsecret():
 def passcache():
     # Delete old folder and make a new one
     sudo( 'rm -rf /home/ubuntu/projects/rscoin')
+    sudo("apt-get install -y sysbench")
 
     with cd('/home/ubuntu/projects'):
         sudo('pip install petlib --upgrade')
@@ -174,7 +206,7 @@ def passcache():
 
 @runs_once
 def init():
-    local("grep rsa ~/.ssh/known_hosts > known_hosts")
+    # local("grep rsa ~/.ssh/known_hosts > known_hosts")
     local("python derivekey.py --store")
     execute(passcache)
 
@@ -218,7 +250,7 @@ def experiment1run():
         run("python simscript.py %s payments.txt" % env.messages)
         run("rm -rf %s" % env.expname)
         run("mkdir %s" % env.expname)
-        run("./rsc.py --play payments.txt-issue > %s/issue-times.txt" % env.expname)
+        run("./rsc.py --play payments.txt-issue --conn 10 > %s/issue-times.txt" % env.expname)
         # run("./rsc.py --play payments.txt-r1 > experiment1/r1-times.txt")
 
 @roles("clients")
@@ -232,7 +264,7 @@ def experiment1pre():
 @parallel
 def experiment1actual():
     with cd('/home/ubuntu/projects/rscoin'):
-        run("./rsc.py --play payments.txt-r2 --conn 20 > %s/r2-times.txt" % env.expname)
+        run("./rsc.py --play payments.txt-r2 --conn 30 > %s/r2-times.txt" % env.expname)
 
 
 @roles("clients")
@@ -263,9 +295,9 @@ def experiment2():
     local("rm -rf experiment2")
     local("mkdir experiment2")
 
-    local("python simscript.py 200 payments.txt")
+    local("python simscript.py 1000 payments.txt")
     local("./rsc.py --play payments.txt-issue > experiment2/issue-times.txt")
-    local("./rsc.py --play payments.txt-r1 --conn 20 > experiment2/r1-times.txt")
+    local("./rsc.py --play payments.txt-r1 --conn 30 > experiment2/r1-times.txt")
     # local("python -m cProfile -s tottime rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
     local("./rsc.py --play payments.txt-r2 > experiment2/r2-times.txt")
 
@@ -279,7 +311,10 @@ def experiment3():
 
     env.messages = 1000
 
-    for i in range(29, len(servers)+1):
+    ## Use 20 clients
+    env.climit = 20
+
+    for i in [10, 15, 20, 25, 30]: # range(1, len(servers)+1):
 
         env.expname = "experiment3x%03d" % i
         with settings(warn_only=True):
@@ -320,8 +355,8 @@ def experiment3():
 
 
 
-@roles("servers")
-def exp3each():
-    print "Hello: %s" % env.host
-    execute(keys)
-    execute(loaddir)
+#@roles("servers")
+#def exp3each():
+#    print "Hello: %s" % env.host
+#    execute(keys)
+#    execute(loaddir)

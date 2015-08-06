@@ -300,8 +300,8 @@ def main():
             cores += [ c ]
 
         def play_another_song(var):
-            # if var:
-            #    print var
+            if var:
+                print "ERROR", var
 
             if cores != []:
                 c = cores.pop()

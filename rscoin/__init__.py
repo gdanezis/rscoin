@@ -62,7 +62,7 @@ class Key:
         if self.sec is not None:
             sec = self.sec.binary()
         return (self.pub.export(EcPt.POINT_CONVERSION_UNCOMPRESSED), sec)
-        # return (self.pub.export(EcPt.POINT_CONVERSION_COMPRESSED), sec)
+
 
 
 # Named structures
