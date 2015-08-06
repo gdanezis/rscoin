@@ -23,7 +23,7 @@ def parse_machines(s):
     return names
 
 
-all_machines = get_aws_machines()
+all_machines = sorted(get_aws_machines())
 servers = all_machines[:len(all_machines) / 2]
 clients = all_machines[len(all_machines) / 2:]
 
@@ -232,7 +232,7 @@ def experiment1pre():
 @parallel
 def experiment1actual():
     with cd('/home/ubuntu/projects/rscoin'):
-        run("./rsc.py --play payments.txt-r2 --conn 20 > %s/r2-times.txt" % env.expname)
+        run("./rsc.py --play payments.txt-r2 --conn 30 > %s/r2-times.txt" % env.expname)
 
 
 @roles("clients")
@@ -279,7 +279,7 @@ def experiment3():
 
     env.messages = 1000
 
-    for i in range(1, len(servers)+1):
+    for i in range(29, len(servers)+1):
 
         env.expname = "experiment3x%03d" % i
         with settings(warn_only=True):
